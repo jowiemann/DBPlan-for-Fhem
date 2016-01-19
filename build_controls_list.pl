@@ -41,7 +41,7 @@ sub listfiles2{
         }
         push @lines, "DEL FHEM/98_DBPlan.pm\n";
 
-        open(my $fh, '>:raw', 'controls_signalduino.txt');
+        open(my $fh, '>:raw', 'controls_dbplan.txt');
         
         foreach my $l (sort @lines){
             print $l;
