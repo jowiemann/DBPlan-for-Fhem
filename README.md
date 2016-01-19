@@ -5,7 +5,7 @@ Attention: 98_DBPlan is not yet distributed bei FHEM update
 
 How to install
 ======
-The Perl modules can be loaded directly into your FHEM installation:
+The Perl module can be loaded directly into your FHEM installation. For this please copy the below command into the FHEM command line.
 
 ```update all https://raw.githubusercontent.com/jowiemann/DBPlan-for-Fhem/master/controls_dbplan.txt```
 
