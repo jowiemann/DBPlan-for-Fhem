@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 37445 2016-01-19 11:27:26Z jowiemann $
+# $Id: 98_DBPlan.pm 37445 2016-02-05 10:40:26Z jowiemann $
 ##############################################################################
 #
 #     78_DBPlan.pm
@@ -52,6 +52,7 @@ sub DBPlan_Initialize($) {
         . "dbplan-travel-time "
         . "dbplan-time-selection:arrive,depart "
         . "dbplan-default-char "
+        . "dbplan-table-headers "
         . $readingFnAttributes;
 }
 
@@ -693,7 +694,9 @@ sub DBPlan_Parse_Timetable($)
         return;
     }
     
-    my $timetable = HTML::TableExtract->new( headers => ["An", " ", "Dauer", "Preis"]  );
+    my @headers = split(/ /, AttrVal($name, "dbplan-table-headers", "An Dauer Preis"));
+    Log3 $name, 4, "DBPlan ($name) - Timetable-Headers: @headers";
+    my $timetable = HTML::TableExtract->new( headers => \@headers );
     my $retRow = "";
 
     Log3 $name, 4, "DBPlan ($name) - Timetable: data for HTML::TableExtract: \n $data";
@@ -708,7 +711,7 @@ sub DBPlan_Parse_Timetable($)
 
         Log3 $name, 4, "DBPlan ($name) - Timetable-Org1: $retRow";
 
-        if(defined($row)) {
+        if(@$row) {
           $retRow = join(';', @$row);
           $retRow =~ s/\n|\r/;/g; #s,[\r\n]*,,g;
           if($defChar ne "delete") {
@@ -738,6 +741,9 @@ sub DBPlan_Parse_Timetable($)
     for($i=1; $i<=3; $i++) {
 
        my ($d_time, $a_time, $d_delay, $a_delay, $change, $duration, $prod, $price) = split(";", $planrow[$i]);
+
+       $prod = "" unless(defined($prod));
+       $price = "" unless(defined($price));
 
        Log3 $name, 4, "DBPlan ($name) - Timetable: $d_time - $a_time - $d_delay - $a_delay - $change - $duration - $prod - $price";
 
