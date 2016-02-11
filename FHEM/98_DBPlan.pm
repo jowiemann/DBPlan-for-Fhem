@@ -1,7 +1,7 @@
-# $Id: 98_DBPlan.pm 37691 2016-02-05 10:40:26Z jowiemann $
+# $Id: 98_DBPlan.pm 1008 2016-02-11 12:00:00Z jowiemann $
 ##############################################################################
 #
-#     78_DBPlan.pm
+#     98_DBPlan.pm
 #
 #     Calls the URL: http://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1
 #     with the given attributes. 
@@ -693,9 +693,13 @@ sub DBPlan_Parse_Timetable($)
         Log3 $name, 2, "DBPlan ($name) - Timetable: Error loading HTML::TableExtract. May be this module is not installed.";
         return;
     }
+
+    $data =~ s/\<td.class="ovHeadNoPad"\>&nbsp;\<\/td\>/\<td class="ovHead"\>\nLeer\<br \/\>\nLeer\n\<\/td\>/g;
+
+    # Log3 $name, 2, $data;
     
-    my @headers = split(/ /, AttrVal($name, "dbplan-table-headers", "An Dauer Preis"));
-    Log3 $name, 4, "DBPlan ($name) - Timetable-Headers: @headers";
+    my @headers = split(/ /, AttrVal($name, "dbplan-table-headers", "An Leer Dauer Preis"));
+    Log3 $name, 3, "DBPlan ($name) - Timetable-Headers: @headers";
     my $timetable = HTML::TableExtract->new( headers => \@headers );
     my $retRow = "";
 
