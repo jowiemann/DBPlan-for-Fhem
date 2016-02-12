@@ -1,0 +1,73 @@
+12.02.2016
+ - Fehler beseitigt, wenn Zelleninhalt mit &nbsp; belegt
+
+11.02.2016
+ - Fix für Spaltenposition in TableExtract
+
+05.01.2016
+ - Fehler bei Spalte ohne Headerbezeichnung mit TableExtract beseitigt.
+
+13.11.2015
+ - Kleinere Fehlerkorrektur
+
+04.11.2015
+ - um folgende Attribute erweitert:
+ - dbplan_via_1: Erster Via-Bahnhof
+ - dbplan_via_2: Zweiter Via-Bahnhof
+ - dbplan_tariff_class: 1 oder 2 Klasse
+ - dbplan_addon_options: Ihr könne jetzt weitere Parameter der API angegeben werden, ohne die base_url verändern zu müssen.
+
+19.07.2015
+ - Fixed a bug, to verify protocol #7
+ - added a option, to run the fhem module without a pysical device. Use directio to run the module from a fifo
+ - updated firmware to 3.1.2a
+
+29.07.2015
+ - Fehler beseitigt für Attribut: dbplan_base_url
+
+23.07.2015
+ - Warnings gefixed.
+
+15.07.2015
+ -  Parsen mit RegEx auf HTML::TableExtract umgestellt
+
+18.06.2015
+ - Attribut: dbplan-default-char
+ - Define a string which will be displayed if no information is available. Defaultstring: "none".
+ - When definening "delete" as string the reading will not be filled and is not available since an information excists
+ - When defined "nochar" the raeding will not be filled with " "
+
+
+15.06.2015
+ - RegEx überarbeitet. Die DB hatte Formatierungen geändert.
+
+26.05.2015
+ - Version mit folgenden zusätzlichen Attributen:
+ - dbplan-travel-date -> Define the date of travel. Default: actual date
+ - dbplan-travel-time -> Define the time of travel. Default: actual time
+ - dbplan-travel-selection -> Define if date / time is departure or arrival. Default: departure
+
+20.05.2015
+ - Prüfung auf "Fahrt fällt aus" mit aufgenommen.
+
+14.04.2015
+ - habe für STATE noch ein 'initialized' eingebaut.
+ - initialized -> das Device ist definiert, es wurde bisher allerdings noch kein Request auf das HTTP Interface durchgeführt
+ - active ->  der Timer ist aktiv
+ - stopped -> der Timer wurde angehalten
+ - disabled -> das Attribut 'disabled' wurde gesetzt
+
+
+13.04.2015 
+ - Settings implementiert:
+ - interval -> set new interval time in seconds for parsing the DB time table
+ - reread -> reread and parse the DB time table. Only active, if not state: disabled
+ - stop -> stop interval timer, only active if state: active
+ - start -> restart interval timer, only active if state: stopped
+
+
+12.04.2015
+ - Umgestellt auf HttpUtils_NonblockingGet
+
+08.04.2015
+ - Initial Version of DBPlan.
