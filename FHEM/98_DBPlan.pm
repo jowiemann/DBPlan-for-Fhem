@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 37838 2016-02-11 12:00:00Z jowiemann $
+# $Id: 98_DBPlan.pm 37865 2016-02-12 08:36:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
@@ -9,7 +9,7 @@
 #     Z=destination will be replace with "S=".AttrVal($name, "dbplan_destination", undef)
 #     See also the domumentation for external calls
 #     Internet-Reiseauskunft der Deutschen Bahn AG
-#     Externe Aufrufparameter und Rückgabeparameter an externe Systeme
+#     Externe Aufrufparameter und RÃ¼ckgabeparameter an externe Systeme
 ##############################################################################
 
 use strict;                          
@@ -258,15 +258,15 @@ sub DBPlan_Attr(@) {
 # generating bit pattern for DB products
 #
 # Bit Nummer Produktklasse
-#         0  ICE-Züge
-#         1  Intercity- und Eurocityzüge
-#         2  Interregio- und Schnellzüge
-#         3  Nahverkehr, sonstige Züge
+#         0  ICE-ZÃ¼ge
+#         1  Intercity- und EurocityzÃ¼ge
+#         2  Interregio- und SchnellzÃ¼ge
+#         3  Nahverkehr, sonstige ZÃ¼ge
 #         4  S-Bahnen
 #         5  Busse
 #         6  Schiffe
 #         7  U-Bahnen
-#         8  Straßenbahnen
+#         8  StraÃŸenbahnen
 #         9  Anruf Sammeltaxi
 #
 sub DBPlan_products($)
@@ -626,7 +626,7 @@ sub DBPlan_Parse_Timetable($)
     my $pattern = '\<div class="haupt bline leftnarrow"\>(.*?)\<div class="bline bggrey stdpadding"\>';
 
     if ($data =~ m/MOBI_ASK_DEU_de_error/s) {
-        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prüfen.";
+        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃ¼fen.";
         readingsBeginUpdate($hash);
         readingsBulkUpdate( $hash, "plan_error", "error in DB request" );
         readingsEndUpdate( $hash, 1 );
@@ -695,6 +695,7 @@ sub DBPlan_Parse_Timetable($)
     }
 
     $data =~ s/\<td.class="ovHeadNoPad"\>&nbsp;\<\/td\>/\<td class="ovHead"\>\nLeer\<br \/\>\nLeer\n\<\/td\>/g;
+    $data =~ s/&nbsp;/ /g;
 
     # Log3 $name, 2, $data;
     
@@ -719,9 +720,9 @@ sub DBPlan_Parse_Timetable($)
           $retRow = join(';', @$row);
           $retRow =~ s/\n|\r/;/g; #s,[\r\n]*,,g;
           if($defChar ne "delete") {
-            $retRow =~ s/ /$defChar/g;
+            $retRow =~ s/Â /$defChar/g;
           } else {
-            $retRow =~ s/ /$filler/g;
+            $retRow =~ s/Â /$filler/g;
           }
         }
 
@@ -817,13 +818,13 @@ sub DBPlan_html2txt($)
 
     $string =~ s/&nbsp;/ /g;
     $string =~ s/&amp;/&/g;
-    $string =~ s/(\xe4|&auml;|\\u00e4|\\u00E4)/ä/g;
-    $string =~ s/(\xc4|&Auml;|\\u00c4|\\u00C4)/Ä/g;
-    $string =~ s/(\xf6|&ouml;|\\u00f6|\\u00F6)/ö/g;
-    $string =~ s/(\xd6|&Ouml;|\\u00d6|\\u00D6)/Ö/g;
-    $string =~ s/(\xfc|&uuml;|\\u00fc|\\u00FC)/ü/g;
-    $string =~ s/(\xdc|&Uuml;|\\u00dc|\\u00DC)/Ü/g;
-    $string =~ s/(\xdf|&szlig;)/ß/g;
+    $string =~ s/(\xe4|&auml;|\\u00e4|\\u00E4)/Ã¤/g;
+    $string =~ s/(\xc4|&Auml;|\\u00c4|\\u00C4)/Ã„/g;
+    $string =~ s/(\xf6|&ouml;|\\u00f6|\\u00F6)/Ã¶/g;
+    $string =~ s/(\xd6|&Ouml;|\\u00d6|\\u00D6)/Ã–/g;
+    $string =~ s/(\xfc|&uuml;|\\u00fc|\\u00FC)/Ã¼/g;
+    $string =~ s/(\xdc|&Uuml;|\\u00dc|\\u00DC)/Ãœ/g;
+    $string =~ s/(\xdf|&szlig;)/ÃŸ/g;
     $string =~ s/<.+?>//g;
     $string =~ s/(^\s+|\s+$)//g;
 
@@ -907,8 +908,8 @@ sub RegExTest()
 	<ul>
 		Example for a timetable query:<br><br>
 		<ul><code>
-                   attr DB_Test dbplan_departure KÃ¶ln-Weiden West
-                   attr DB_Test dbplan_destination KÃ¶ln HBF
+                   attr DB_Test dbplan_departure KÃƒÂ¶ln-Weiden West
+                   attr DB_Test dbplan_destination KÃƒÂ¶ln HBF
                    attr DB_Test room OPNV
 		</code></ul>
 	</ul>
@@ -955,7 +956,7 @@ sub RegExTest()
 			DB tariff class: 1 or 2 class<br>
 		<li><b>dbplan_addon_options</b></li>
 			extended options like discribed in the api document: <li><a http://webcache.googleusercontent.com/search?q=cache:wzb_OlIUCBQJ:www.geiervally.lechtal.at/sixcms/media.php/1405/Parametrisierte%2520%25DCbergabe%2520Bahnauskunft(V%25205.12-R4.30c,%2520f%25FCr.pdf+&cd=3&hl=de&ct=clnk&gl=de
-">Parametrisierte Übergabe Bahnauskunft</a></li><br>
+">Parametrisierte Ãœbergabe Bahnauskunft</a></li><br>
 		<li><b>dbplan_disable</b></li>
 			If set to 1 polling of DB Url will be stopped, setting to 0 or deleting will activate polling<br>
 		<li><b>dbplan-default-char</b></li>
