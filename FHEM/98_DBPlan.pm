@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 37909 2017-01-04 13:37:00Z jowiemann $
+# $Id: 98_DBPlan.pm 56765 2017-01-04 13:37:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
@@ -9,7 +9,7 @@
 #     Z=destination will be replace with "S=".AttrVal($name, "dbplan_destination", undef)
 #     See also the domumentation for external calls
 #     Internet-Reiseauskunft der Deutschen Bahn AG
-#     Externe Aufrufparameter und RÃ¼ckgabeparameter an externe Systeme
+#     Externe Aufrufparameter und RÃƒÂ¼ckgabeparameter an externe Systeme
 ##############################################################################
 
 use strict;                          
@@ -413,15 +413,15 @@ sub DBPlan_Attr(@) {
 # generating bit pattern for DB products
 #
 # Bit Nummer Produktklasse
-#         0  ICE-ZÃ¼ge
-#         1  Intercity- und EurocityzÃ¼ge
-#         2  Interregio- und SchnellzÃ¼ge
-#         3  Nahverkehr, sonstige ZÃ¼ge
+#         0  ICE-ZÃƒÂ¼ge
+#         1  Intercity- und EurocityzÃƒÂ¼ge
+#         2  Interregio- und SchnellzÃƒÂ¼ge
+#         3  Nahverkehr, sonstige ZÃƒÂ¼ge
 #         4  S-Bahnen
 #         5  Busse
 #         6  Schiffe
 #         7  U-Bahnen
-#         8  StraÃŸenbahnen
+#         8  StraÃƒÅ¸enbahnen
 #         9  Anruf Sammeltaxi
 #
 sub DBPlan_products($)
@@ -705,7 +705,7 @@ sub DBPlan_Parse_Stationtable($)
     my $pattern = '';
 
     if ($data =~ m/\<div.class="haupt errormsg"\>(.*?)\<\/div\>/s) {
-        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃ¼fen.";
+        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃƒÂ¼fen.";
         readingsBeginUpdate($hash);
         readingsBulkUpdate( $hash, "table_error", "error in DB request: " . DBPlan_decode(DBPlan_html2uml($1)) );
         readingsEndUpdate( $hash, 1 );
@@ -753,7 +753,7 @@ sub DBPlan_Parse_Stationtable($)
         $table_row .= $1;
       }
 
-      # n�chster Bahnhof
+      # nächster Bahnhof
       $pattern = '\<\/span\>\<\/a\>&gt;&gt;(.*?)\<br.\/\>\<span.class';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . DBPlan_decode(DBPlan_html2uml($1));
@@ -765,7 +765,7 @@ sub DBPlan_Parse_Stationtable($)
         $table_row .= "|" . $1;
       }
 
-      # Versp�tung
+      # Verspätung
       $pattern = '\<span.class="okmsg"\>(.*?)\<\/span\>';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . $1;
@@ -773,7 +773,7 @@ sub DBPlan_Parse_Stationtable($)
         $table_row .= "|-";
       }
 
-      # Versp�tung rot
+      # Verspätung rot
       $pattern = '\<span.class="red"\>(.*?)\<\/span\>,&nbsp;&nbsp;';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . $1;
@@ -1084,7 +1084,7 @@ sub DBPlan_Parse_Timetable($)
     my $pattern = '\<div class="haupt bline leftnarrow"\>(.*?)\<div class="bline bggrey stdpadding"\>';
 
     if ($data =~ m/MOBI_ASK_DEU_de_error/s) {
-        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃ¼fen.";
+        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃƒÂ¼fen.";
         readingsBeginUpdate($hash);
         readingsBulkUpdate( $hash, "plan_error", "error in DB request" );
         readingsEndUpdate( $hash, 1 );
@@ -1182,9 +1182,9 @@ sub DBPlan_Parse_Timetable($)
           $retRow = join(';', @myValues);
           $retRow =~ s/\n|\r/;/g; #s,[\r\n]*,,g;
           if($defChar ne "delete") {
-            $retRow =~ s/Â /$defChar/g;
+            $retRow =~ s/Ã‚Â /$defChar/g;
           } else {
-            $retRow =~ s/Â /$filler/g;
+            $retRow =~ s/Ã‚Â /$filler/g;
           }
         }
 
@@ -1273,13 +1273,13 @@ sub DBPlan_Parse_Timetable($)
 
 #####################################
 # replaces all HTML entities to their utf-8 counter parts.
-# c3 bc = �
-# c3 9f = �
-# c3 b6 = �
-# c3 a4 = �
-# c3 84 = �
-# c3 96 = �
-# c3 9c = �
+# c3 bc = ü
+# c3 9f = ß
+# c3 b6 = ö
+# c3 a4 = ä
+# c3 84 = Ä
+# c3 96 = Ö
+# c3 9c = Ü
 # c2 ab = "
 # c2 bb = "
 # e2 80 = ""
@@ -1293,13 +1293,13 @@ sub DBPlan_html2txt($)
 
     $string =~ s/&nbsp;/ /g;
     $string =~ s/&amp;/&/g;
-    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/Ã¤/g;
-    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/Ã„/g;
-    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/Ã¶/g;
-    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/Ã–/g;
-    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/Ã¼/g;
-    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/Ãœ/g;
-    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/ÃŸ/g;
+    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/ÃƒÂ¤/g;
+    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/Ãƒâ€ž/g;
+    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/ÃƒÂ¶/g;
+    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/Ãƒâ€“/g;
+    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/ÃƒÂ¼/g;
+    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/ÃƒÅ“/g;
+    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/ÃƒÅ¸/g;
     $string =~ s/<.+?>//g;
     $string =~ s/(^\s+|\s+$)//g;
 
@@ -1314,13 +1314,13 @@ sub DBPlan_html2uml($)
 
     $string =~ s/&nbsp;/ /g;
     $string =~ s/&amp;/&/g;
-    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/�/g;
-    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/�/g;
-    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/�/g;
-    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/�/g;
-    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/�/g;
-    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/�/g;
-    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/�/g;
+    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/ä/g;
+    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/Ä/g;
+    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/ö/g;
+    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/Ö/g;
+    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/ü/g;
+    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/Ü/g;
+    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/ß/g;
     $string =~ s/<.+?>//g;
     $string =~ s/(^\s+|\s+$)//g;
 
@@ -1330,15 +1330,15 @@ sub DBPlan_html2uml($)
 
 sub DBPlan_decode($) {
   my($text) = @_;  
-  $text =~ s/�/ä/g;
-  $text =~ s/�/Ä/g;
-  $text =~ s/�/ö/g;
-  $text =~ s/�/�/g;
-  $text =~ s/�/ü/g;
-  $text =~ s/�/Ü/g;
-  $text =~ s/�/ß/g;
-  $text =~ s/�/´/g;
-  $text =~ s/"//g;  
+  $text =~ s/ä/Ã¤/g;
+  $text =~ s/Ä/Ã„/g;
+  $text =~ s/ö/Ã¶/g;
+  $text =~ s/Ö/Ã/g;
+  $text =~ s/ü/Ã¼/g;
+  $text =~ s/Ü/Ãœ/g;
+  $text =~ s/ß/ÃŸ/g;
+  $text =~ s/´/Â´/g;
+  $text =~ s/"/Â„/g;  
   return $text;
 }
 
@@ -1478,8 +1478,8 @@ sub RegExTest()
 	<ul>
 		Example for a timetable query:<br><br>
 		<ul><code>
-                   attr DB_Test dbplan_station  KÃƒÂ¶ln-Weiden West
-                   attr DB_Test dbplan_destination KÃƒÂ¶ln HBF
+                   attr DB_Test dbplan_station  KÃƒÆ’Ã‚Â¶ln-Weiden West
+                   attr DB_Test dbplan_destination KÃƒÆ’Ã‚Â¶ln HBF
                    attr DB_Test room OPNV
 		</code></ul>
 	</ul>
@@ -1538,7 +1538,7 @@ sub RegExTest()
 			Define the time of travel in hh:mm. Default: actual time.<br>
 		<li><b>dbplan_addon_options</b></li>
 			extended options like discribed in the api document: <li><a http://webcache.googleusercontent.com/search?q=cache:wzb_OlIUCBQJ:www.geiervally.lechtal.at/sixcms/media.php/1405/Parametrisierte%2520%25DCbergabe%2520Bahnauskunft(V%25205.12-R4.30c,%2520f%25FCr.pdf+&cd=3&hl=de&ct=clnk&gl=de
-">Parametrisierte Ãœbergabe Bahnauskunft</a></li><br>
+">Parametrisierte ÃƒÅ“bergabe Bahnauskunft</a></li><br>
 		<li><b>dbplan-disable</b></li>
 			If set to 1 polling of DB Url will be stopped, setting to 0 or deleting will activate polling<br>
 		<li><b>dbplan-default-char</b></li>
