@@ -1,3 +1,10 @@
+04.01.2017
+ - Veränderungen in den HTML-Seiten der DB nachgezogen
+ - Log3 level überprüft
+ - kleine Schönheitsfehler beseitigt
+ - Auswahlmöglichkeit zwischen Bahnhofsanzeige und Fahrplanzeige hinzugefügt
+ - Bahnhofsliste Deutschland hinzugefügt
+
 12.02.2016
  - Fehler beseitigt, wenn Zelleninhalt mit &nbsp; belegt
 
