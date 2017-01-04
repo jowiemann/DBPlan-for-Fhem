@@ -1,12 +1,15 @@
 04.01.2017
- - Veränderungen in den HTML-Seiten der DB nachgezogen
+ - Veränderungen in den HTML-Seiten der DB nachgezogen.
  - Log3 level überprüft
  - kleine Schönheitsfehler beseitigt
  - Auswahlmöglichkeit zwischen Bahnhofsanzeige und Fahrplanzeige hinzugefügt
  - Bahnhofsliste Deutschland hinzugefügt
 
+05.02.2016
+ - Hoffentlich den bei einigen auftauchenden Fehler mit TableExtract beseitigt.
+ 
 12.02.2016
- - Fehler beseitigt, wenn Zelleninhalt mit &nbsp; belegt
+ - Fehler beseitigt, wenn Zelleninhalt mit &nbsp; belegt.
 
 11.02.2016
  - Fix für Spaltenposition in TableExtract
