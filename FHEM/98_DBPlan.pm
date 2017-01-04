@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 56910 2017-01-04 13:37:00Z jowiemann $
+# $Id: 98_DBPlan.pm 63986 2017-01-04 18:33:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
@@ -1072,6 +1072,7 @@ sub DBPlan_Parse_Timetable($)
          readingsBulkUpdate( $hash, "travel_note_link_$i", $defChar);
          readingsBulkUpdate( $hash, "travel_note_$i", $defChar);
          readingsBulkUpdate( $hash, "travel_note_text_$i", $defChar);
+         readingsBulkUpdate( $hash, "travel_note_error_$i", $defChar);
          readingsBulkUpdate( $hash, "travel_departure_$i", $defChar);
          readingsBulkUpdate( $hash, "travel_destination_$i", $defChar);
       }
@@ -1429,9 +1430,8 @@ sub RegExTest()
 <h3>DBPlan</h3>
 
 <ul>
-	This module provides a generic way to retrieve information remote from a Fritz!Box and store them in Readings. 
-	It queries a given URL with Headers and data defined by attributes. 
-	From the HTTP Response it extracts Readings named in attributes using Regexes also defined by attributes.
+	The module fetches from the info page of the DB <http://reiseauskunft.bin.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1>
+       up-to-date information on a specified connection and stores it in Fhem readings.
        The file with the IBNR codes and stations of Deutsche Bahn can be download at http://www.michaeldittrich.de/ibnr.
 
 	<br><br>
@@ -1440,7 +1440,7 @@ sub RegExTest()
 		<br>
 		<li>
 			This Module uses the non blocking HTTP function HttpUtils_NonblockingGet provided by FHEM's HttpUtils in a new Version published in December 2013.<br>
-			If not already installed in your environment, please update FHEM or install it manually using appropriate commands from your environment.<br>
+			If the module is not already present in your Fhem environment, please update FHEM via the update command.<br>
 		</li>
 		
 	</ul>
@@ -1448,7 +1448,7 @@ sub RegExTest()
        STATE will show the device status: 
 	<ul>
 		<li><b>initialized</b></li>
-			the device is definied, but no successfully request and parsing has been done<br>
+			the device is defined, but no successfully requests and parsing has been done<br>
                      this state will also be set when changing from <inactiv> to <activ> and <disabled> to <enabled><br>
 		<li><b>active</b></li>
 			the device is working<br>
@@ -1463,7 +1463,7 @@ sub RegExTest()
 	<b>Define</b>
 	<ul>
 		<br>
-		<code>define &lt;name&gt; DBPlan &lt;Refrsh interval in seconds&gt;</code>
+		<code>define &lt;name&gt; DBPlan &lt;Refresh interval in seconds&gt;</code>
 		<br><br>
 		The module connects to the given URL every Interval seconds and then parses the response<br>
 		<br>
@@ -1478,8 +1478,8 @@ sub RegExTest()
 	<ul>
 		Example for a timetable query:<br><br>
 		<ul><code>
-                   attr DB_Test dbplan_station  KÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ln-Weiden West
-                   attr DB_Test dbplan_destination KÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ln HBF
+                   attr DB_Test dbplan_station  Köln-Weiden West
+                   attr DB_Test dbplan_destination Köln HBF
                    attr DB_Test room OPNV
 		</code></ul>
 	</ul>
@@ -1501,7 +1501,12 @@ sub RegExTest()
 	<a name="DBPlanget"></a>
 	<b>Get-Commands</b><br>
 	<ul>
-		none
+		<li><b>PlainText</b></li>
+			the informations will be shown as plain text<br>
+		<li><b>searchStation</b></li>
+			search for a german DB Station<br>
+		<li><b>showStations</b></li>
+			show the german DB station list<br>
 	</ul>
 	<br>
 
@@ -1552,11 +1557,11 @@ sub RegExTest()
 		<li><b>dbplan-remote-loglevel</b></li>
 			Define the loglevel for all http get. Default is loglevel 4.<br>
 		<li><b>dbplan-tabel-headers</b></li>
-			tbd<br>
+			internal attribute to change the header information used by HTML::TableExtract<br>
 		<li><b>dbplan-station-file</b></li>
-			tbd<br>
+			Directory and name of the station table to be used: /opt/fhem/FHEM/deutschland_bhf.csv<br>
 		<li><b>dbplan-base-type</b></li>
-			tbd<br>
+			Select whether a station table (table) or a timetable (plan) display is to be generated<br>
 	</ul>
        <br>
 	<a name="DBPlanReadings"></a>
@@ -1580,6 +1585,8 @@ sub RegExTest()
 			travel plattform changings<br>
 		<li><b>travel_price_(1..3)</b></li>
 			travel price in EUR<br>
+		<li><b>travel_error_(1..3)</b></li>
+			error information when calling the note url<br>
 		<li><b>travel_note_(1..3)</b></li>
 			travel note for travel plan<br>
 		<li><b>travel_note_link_(1..3)</b></li>
@@ -1594,4 +1601,191 @@ sub RegExTest()
 </ul>
 
 =end html
+
+=begin html_DE
+
+<a name="DBPlan"></a>
+<h3>DBPlan</h3>
+
+<ul>
+	Das Modul holt von der Infoseite der DB <http://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1>
+       aktuelle Informationen zu einer angegeben Verbindung und legt sie in Fhem readings ab.
+       Die Datei mit den IBNR-Codes und Stationen der Deutschen Bahn kann unter http://www.michaeldittrich.de/ibnr abgerufen werden.
+
+	<br><br>
+	<b>Prerequisites</b>
+	<ul>
+		<br>
+		<li>
+			Dieses Modul verwendet die nicht blockierende HTTP-Funktion HttpUtils_NonblockingGet von FHEM's HttpUtils in der aktuellen Version.<br>
+                     Falls das Modul noch nicht in Ihrer Fhem-Umgebung vorhanden ist, aktualisieren Sie bitte FHEM über den Update Befehl.<br>
+		</li>
+		
+	</ul>
+	<br>
+       STATE zeigt den device status: 
+	<ul>
+		<li><b>initialized</b></li>
+			Das Device ist definiert, aber es wurde keine erfolgreichen Anfragen und Analysen durchgeführt<br>
+                     Dieser Zustand wird auch beim Wechsel von <inactiv> auf <activ> und <disabled> auf <enabled> gesetzt<br>
+		<li><b>active</b></li>
+			Das Device arbeitet<br>
+		<li><b>stopped</b></li>
+			Der Device Time wurde angehalten. Ein reread ist jedoch möglich<br>
+		<li><b>disabled</b></li>
+			Das Device wurde deaktiviert.<br>
+
+	</ul>
+
+	<a name="DBPlandefine"></a>
+	<b>Define</b>
+	<ul>
+		<br>
+		<code>define &lt;name&gt; DBPlan &lt;Refresh interval in seconds&gt;</code>
+		<br><br>
+              Das Modul verbindet alle "Intervall"-Sekunden mit der angegebenen URL und analysiert dann die Antwort<br>
+		<br>
+		Example:<br>
+		<br>
+		<ul><code>define DBPlan_Test DBPlan 60</code></ul>
+	</ul>
+	<br>
+
+	<a name="DBPlanconfiguration"></a>
+	<b>Konfiguration von DBPlan</b><br><br>
+	<ul>
+		Beispiel für eine Fahrplanabfrage:<br><br>
+		<ul><code>
+                   attr DB_Test dbplan_station  Köln-Weiden West
+                   attr DB_Test dbplan_destination Köln HBF
+                   attr DB_Test room OPNV
+		</code></ul>
+	</ul>
+	<br>
+
+	<a name="DBPlanset"></a>
+	<b>Set-Commands</b><br>
+	<ul>
+		<li><b>interval</b></li>
+			setzen einer anderen Intervallzeit für das Holen und Parsen der DB Informationen<br>
+		<li><b>reread</b></li>
+			Holen und Parsen der DB Informationen. Nur aktiv, wenn kein Status: disabled<br>
+		<li><b>stop</b></li>
+			Stoppt den Timer. Nur aktiv, wenn Status: active<br>
+		<li><b>start</b></li>
+			Neustart des Timers. Nur aktiv, wenn Status: stopped<br>
+	</ul>
+	<br>
+	<a name="DBPlanget"></a>
+	<b>Get-Commands</b><br>
+	<ul>
+		<li><b>PlainText</b></li>
+			Die ermittelten Informationen werden als "plain Text" ausgegeben<br>
+		<li><b>searchStation</b></li>
+			suche in der Bahnhofstabelle<br>
+		<li><b>showStations</b></li>
+			Anzeige der Bahnhofstabelle<br>
+	</ul>
+	<br>
+
+	<a name="DBPlanattr"></a>
+	<b>Attributes</b><br><br>
+	<ul>
+		<li><a href="#readingFnAttributes">readingFnAttributes</a></li>
+		<br>
+		<li><b>dbplan_station</b></li>
+			place of departure<br>
+		<li><b>dbplan_station</b></li>
+			Abfahrtsbahnhof / Haltestelle<br>
+		<li><b>dbplan_destination </b></li>
+			Ankunftsbahnhof / Haltestelle<br>
+		<li><b>dbplan_via_1 </b></li>
+			1. Zwischenhalt in Bahnhof / Haltestelle<br>
+		<li><b>dbplan_via_2 </b></li>
+			2. Zwischenhalt in Bahnhof / Haltestelle<br>
+		<li><b>dbplan_journey_prod </b></li>
+			Verkehrsmittel, wie z.B.: ICE, Bus, Straßenbahn<br>
+		<li><b>dbplan_journey_opt </b></li>
+			Reiseoptionen wie z.B.: direct connection<br>
+		<li><b>dbplan_tariff_class </b></li>
+			1. oder 2. Klasse<br>
+		<li><b>dbplan_board_type </b></li>
+			Fahrplansuche bzw. Bahnhofsanzeige für Abfahrts- oder Ankunftszeit.<br>
+		<li><b>dbplan_delayed_Journey </b></li>
+			Bei off werden nur pünktliche Verbindungen angezeigt.<br>
+		<li><b>dbplan_max_Journeys </b></li>
+			Anzahl der angezeigten Zugverbindungen in der Bahnhofsansicht.<br>
+		<li><b>dbplan_reg_train </b></li>
+			die Zugbezeichnung, z.B. S für alles was S- und Straßenbahnen angeht, ICE alle ICE oder ICE mit Zugnummer. Usw.<br>
+		<li><b>dbplan_travel_date </b></li>
+			Reisedatum in der Angabe: dd.mm.yy<br>
+		<li><b>dbplan_travel_time </b></li>
+			Abfahtrtszeit in der Angabe: hh.mm<br>
+		<li><b>dbplan_addon_options </b></li>
+			weitere Optionen, wie sie im API-Dokument der DB beschrieben sind.<br>
+              <br>
+		<li><b>Steuernde Attribute:</b></li>
+		<li><b>dbplan-disable </b></li>
+			Device aktivieren / deaktivieren (s. auch FHEM-Doku)<br>
+		<li><b>dbplan-default-char </b></li>
+			Hinweis, der angezeigt wird, wenn keine Information für ein reading zur Verfügung steht.<br>
+			- "none" ist der Standardhinweis.<br> 
+			- "delete" nicht genutzte readings werden auch nicht angezeigt.<br>
+			- "nochar" das Reading wird mit leerem Inhalt angezeigt.<br>
+		<li><b>dbplan-tabel-headers </b></li>
+			internes Attribut um die Spaltenbezeichnungen für HTML::TableExtract<br>
+		<li><b>dbplan-station-file </b></li>
+			Pfad zur Bahnhofstabelle. Die Tabelle ist im csv Format abgelegt<br>
+		<li><b>dbplan-base-type </b></li>
+			Anzeige als Bahnhofstabelle (table) oder Verbindungsinformation (plan)<br>
+              <br>
+		<li><b>HTTPMOD Attribute, siehe entsprechende Doku</b></li>
+		<li><b>dbplan-remote-timeout</b></li>
+		<li><b>dbplan-remote-noshutdown</b></li>
+		<li><b>dbplan-remote-loglevel</b></li>
+
+	</ul>
+       <br>
+	<a name="DBPlanReadings"></a>
+	<b>Readings</b><br><br>
+	<ul>
+		<li><a href="#internalReadings">internalReadings</a></li>
+		<br>
+		<li><b>departure_(1..3)</b></li>
+			time of departure<br>
+		<li><b>departure_(1..3) </b></li>
+			Abfahrtszeit<br>
+		<li><b>arrival_(1..3) </b></li>
+			Ankunftszeit<br>
+		<li><b>connection_(1..3) </b></li>
+			Verbindungstyp<br>
+		<li><b>departure_delay_(1..3) </b></li>
+			Verspätung in der Abfahrtszeit<br>
+		<li><b>arrival_delay_(1..3) </b></li>
+			Verspätung in der Ankunftszeit<br>
+              <br>
+		<li><b>travel_note_(1..3) </b></li>
+			Hinweise für die Verbindung<br>
+		<li><b>travel_note_link_(1..3) </b></li>
+			Link zu den weiteren Verbindungsinformationen<br>
+		<li><b>travel_note_text_(1..3) </b></li>
+			Verbindungshinweis<br>
+		<li><b>travel_note_error_(1..3) </b></li>
+			Fehlertext der Detailinformation<br>
+              <br>
+		<li><b>travel_duration_(1..3) </b></li>
+			Reisezeit<br>
+		<li><b>travel_departure_(1..3) </b></li>
+			Informationen über den Abfahtsbahnhof und das Ankunftsgleis<br>
+		<li><b>travel_destination_(1..3) </b></li>
+			Informationen über den Zielbahnhof und das Ankunftsgleis<br>
+		<li><b>travel_change_(1..3) </b></li>
+			Anzahl der Umstiege<br>
+		<li><b>travel_price_(1..3) </b></li>
+			Fahrpreis<br>
+	</ul>
+</ul>
+
+=end html_DE
+
 =cut
