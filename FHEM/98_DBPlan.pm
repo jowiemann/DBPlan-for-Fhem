@@ -1,11 +1,11 @@
-# $Id: 98_DBPlan.pm 37909 2016-02-12 08:36:00Z jowiemann $
+# $Id: 98_DBPlan.pm 37909 2017-01-04 13:37:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
 #
 #     Calls the URL: http://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1
 #     with the given attributes. 
-#     S=departure will be replace with "S=".AttrVal($name, "dbplan_departure", undef)
+#     S=departure will be replace with "S=".AttrVal($name, "dbplan_station", undef)
 #     Z=destination will be replace with "S=".AttrVal($name, "dbplan_destination", undef)
 #     See also the domumentation for external calls
 #     Internet-Reiseauskunft der Deutschen Bahn AG
@@ -16,6 +16,7 @@ use strict;
 use warnings;                        
 use Time::HiRes qw(gettimeofday);    
 use HttpUtils;
+use HTML::Entities;
 
 use LWP;
 use Digest::MD5 qw(md5_hex);
@@ -29,13 +30,14 @@ sub DBPlan_Initialize($) {
     $hash->{DefFn}      = 'DBPlan_Define';
     $hash->{UndefFn}    = 'DBPlan_Undef';
     $hash->{SetFn}      = 'DBPlan_Set';
-#    $hash->{GetFn}      = 'DBPlan_Get';
+    $hash->{GetFn}      = 'DBPlan_Get';
     $hash->{AttrFn}     = 'DBPlan_Attr';
     $hash->{ReadFn}     = 'DBPlan_Read';
 
     $hash->{AttrList} =
-          "dbplan_base_url "
-        . "dbplan_departure "
+          "dbplan_plan_url "
+        . "dbplan_table_url "
+        . "dbplan_station "
         . "dbplan_destination "
         . "dbplan_via_1 "
         . "dbplan_via_2 "
@@ -43,16 +45,22 @@ sub DBPlan_Initialize($) {
         . "S-Bahnen,Busse,Schiffe,U-Bahnen,Strassenbahnen,Anruf-Sammeltaxi "
         . "dbplan_journey_opt:multiple-strict,Direktverbindung,Direktverbindung+Schlafwagen,Direktverbindung+Liegewagen,Fahrradmitnahme "
         . "dbplan_tariff_class:1,2 "
+        . "dbplan_board_type:depart,arrive "
+        . "dbplan_time_selection:arrive,depart "
+        . "dbplan_delayed_Journey:off,on "
+        . "dbplan_travel_date "
+        . "dbplan_travel_time "
+        . "dbplan_max_Journeys:1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 "
+        . "dbplan_reg_train "
         . "dbplan_addon_options "
-        . "dbplan_disable:0,1 "
+        . "dbplan-disable:0,1 "
         . "dbplan-remote-timeout "
         . "dbplan-remote-noshutdown:0,1 "
         . "dbplan-remote-loglevel:0,1,2,3,4,5 "
-        . "dbplan-travel-date "
-        . "dbplan-travel-time "
-        . "dbplan-time-selection:arrive,depart "
         . "dbplan-default-char "
         . "dbplan-table-headers "
+        . "dbplan-station-file "
+        . "dbplan-base-type:plan,table "
         . $readingFnAttributes;
 }
 
@@ -77,14 +85,34 @@ sub DBPlan_Define($$) {
 
     Log3 $name, 3, "DBPlan_Define ($name) - defined with interval $hash->{Interval} (sec)";
 
+    $hash->{PLAN_URL} = AttrVal($name, "dbplan_plan_url", 'http://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1');
+    $hash->{TABLE_URL} = AttrVal($name, "dbplan_table_url", 'http://reiseauskunft.bahn.de/bin/bhftafel.exe/dox?&input=station&start=1&rt=1');
+    $hash->{BASE_TYPE} = AttrVal($name, "dbplan-base-type", 'plan');
+
+    Log3 $name, 3, "DBPlan_Define ($name) - defined with base type $hash->{BASE_TYPE}";
+
+    $hash->{helper}{STATION} = AttrVal($name, "dbplan_station", undef);
+    $hash->{helper}{DESTINATION} = AttrVal($name, "dbplan_destination", undef);
+
     # initial request after 2 secs, there timer is set to interval for further update
     my $nt = gettimeofday()+$hash->{Interval};
     $hash->{TRIGGERTIME} = $nt;
     $hash->{TRIGGERTIME_FMT} = FmtDateTime($nt);
     RemoveInternalTimer($hash);
-    InternalTimer($nt, "DBPlan_GetTimetable", $hash, 0);
 
-    $hash->{BASE_URL} = AttrVal($name, "dbplan_base_url", 'http://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1');
+    InternalTimer($nt, "DBPlan_Get_DB_Info", $hash, 0);
+
+    unless(defined($hash->{helper}{STATION}))
+    {
+        $hash->{STATE} = 'defined';
+        return undef;
+    }
+
+    unless(defined($hash->{helper}{DESTINATION}) && $hash->{BASE_TYPE} eq "plan")
+    {
+        $hash->{STATE} = 'defined';
+        return undef; 
+    }
 
     $hash->{STATE} = 'initialized';
     
@@ -102,32 +130,79 @@ sub DBPlan_Undef($$) {
     return undef;                  
 }
 
-#sub DBPlan_Get($@) {
-#	my ($hash, @param) = @_;
-#	
-#	return '"get Hello" needs at least one argument' if (int(@param) < 2);
-#	
-#	my $name = shift @param;
-#	my $opt = shift @param;
-#	if(!$DBPlan_gets{$opt}) {
-#		my @cList = keys %DBPlan_gets;
-#		return "Unknown argument $opt, choose one of " . join(" ", @cList);
-#	}
-#	
-#	if($attr{$name}{formal} eq 'yes') {
-#	    return $DBPlan_gets{$opt}.', sir';
-#    }
-#	return $DBPlan_gets{$opt};
-#}
+sub DBPlan_Get($@) {
+    my ($hash, @arguments) = @_;
+    my $name = $hash->{NAME};
+
+    return "argument missing" if(int(@arguments) < 2);
+
+    if($arguments[1] eq "searchStation" and int(@arguments) >= 3)
+    {
+        my $table = "";
+        my $head = "Station    Id";
+        my $width = 10;
+        my $stext = join '.*?', @arguments[2..$#arguments];
+        $stext = DBPlan_html2txt($stext);
+        $stext = ".*?" . $stext . ".*?";
+
+        foreach my $stationNames (sort keys %{$hash->{helper}{STATION_NAMES}})
+        {
+            my $string = $stationNames ." - ".$hash->{helper}{STATION_NAMES}{$stationNames};
+            my $test = DBPlan_html2txt($string);
+            if($test =~ m/$stext/si) {
+              $width = length($string) if(length($string) > $width);
+              $table .= $string."\n";
+            }
+        }
+        
+        return $head."\n".("-" x $width)."\n".encode_entities($table);
+    }
+    elsif($arguments[1] eq "showStations" and exists($hash->{helper}{STATION_NAMES}))
+    {
+        my $table = "";
+        my $head = "Station    Id";
+        my $width = 10;
+
+        foreach my $stationNames (sort keys %{$hash->{helper}{STATION_NAMES}})
+        {
+            my $string = $stationNames ." - ".$hash->{helper}{STATION_NAMES}{$stationNames}; 
+            $width = length($string) if(length($string) > $width);
+            $table .= $string."\n";
+        }
+        
+        return $head."\n".("-" x $width)."\n".encode_entities($table);
+    }
+    elsif($arguments[1] eq "PlainText")
+    {
+        my $table = "";
+        my $head = "";
+        my $width = 100;
+
+        $hash->{helper}{plain} = 1;
+
+        $table = DBPlan_Get_DB_Plain_Text($hash);
+
+        delete ($hash->{helper}{plain}) if exists($hash->{helper}{plain});
+
+        return $head."\n".("-" x $width)."\n".$table;
+
+    }
+    else
+    {
+        return "unknown argument ".$arguments[1].", choose one of searchStation".(exists($hash->{helper}{STATION_NAMES}) ? " showStations" : "")." PlainText"; 
+    }
+
+}
 
 sub DBPlan_Set($@) {
 
    my ($hash, $name, $cmd, @val) = @_;
 
    my $list = "interval";
-   $list .= " reread:noArg" if($hash->{STATE} ne 'disabled');
-   $list .= " stop:noArg" if($hash->{STATE} eq 'active' || $hash->{STATE} eq 'initialized');
-   $list .= " start:noArg" if($hash->{STATE} eq 'stopped');
+   $list .= " rereadStationFile:noArg" if(defined(AttrVal($name, "dbplan-station-file", undef)));
+   $list .= " rereadDBInfo:noArg" if($hash->{STATE} ne 'disabled' && $hash->{STATE} ne 'defined');
+   $list .= " inactiv:noArg" if($hash->{STATE} eq 'active' || $hash->{STATE} eq 'initialized');
+   $list .= " activ:noArg" if($hash->{STATE} eq 'inactiv');
 
    if ($cmd eq 'interval')
    {
@@ -136,12 +211,12 @@ sub DBPlan_Set($@) {
          $hash->{Interval} = $val[0];
 
          # initial request after 2 secs, there timer is set to interval for further update
-         my $nt	= gettimeofday()+$hash->{Interval};
+         my $nt = gettimeofday()+$hash->{Interval};
          $hash->{TRIGGERTIME} = $nt;
          $hash->{TRIGGERTIME_FMT} = FmtDateTime($nt);
          if($hash->{STATE} eq 'active' || $hash->{STATE} eq 'initialized') {
             RemoveInternalTimer($hash);
-            InternalTimer($nt, "DBPlan_GetTimetable", $hash, 0);
+            InternalTimer($nt, "DBPlan_Get_DB_Info", $hash, 0);
             Log3 $name, 3, "DBPlan_Set ($name) - restarted with new timer interval $hash->{Interval} (sec)";
          } else {
             Log3 $name, 3, "DBPlan_Set ($name) - new timer interval $hash->{Interval} (sec) will be active when starting/enabling";
@@ -157,31 +232,36 @@ sub DBPlan_Set($@) {
           return "DBPlan_Set - no interval (sec) defined, please use something > 10, defined is $hash->{Interval} (sec)";
       }
    } # if interval
-   elsif ($cmd eq 'reread')
+   elsif ($cmd eq 'rereadDBInfo')
    {
-      DBPlan_GetTimetable($hash);
-
+      DBPlan_Get_DB_Info($hash);
       return undef;
 
    }
-   elsif ($cmd eq 'stop')
+   elsif ($cmd eq 'inactiv')
    {
-      $hash->{STATE} = 'stopped';
+      $hash->{STATE} = 'inactiv';
       RemoveInternalTimer($hash);    
-      Log3 $name, 3, "DBPlan_Set ($name) - interval timeer stopped";
+      Log3 $name, 3, "DBPlan_Set ($name) - interval timer set to inactiv";
 
       return undef;
 
    } # if stop
-   elsif ($cmd eq 'start')
+   elsif ($cmd eq 'activ')
    {
       RemoveInternalTimer($hash);
-      InternalTimer(gettimeofday()+2, "DBPlan_GetTimetable", $hash, 0) if ($hash->{STATE} eq "stopped");
+      InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0) if ($hash->{STATE} eq "inactiv");
       $hash->{STATE}='initialized';
       Log3 $name, 3, "DBPlan_Set ($name) - interval timer started with interval $hash->{Interval} (sec)";
 
       return undef;
+
    } # if start
+   elsif($cmd eq "rereadStationFile")
+   {
+      DBPlan_loadStationFile($hash);
+      return undef;
+   }
 
    return "DBPlan_Set ($name) - Unknown argument $cmd or wrong parameter(s), choose one of $list";
 
@@ -215,7 +295,7 @@ sub DBPlan_Attr(@) {
       if($cmd eq "set") {
          if($attrVal eq "0") {
             RemoveInternalTimer($hash);
-            InternalTimer(gettimeofday()+2, "DBPlan_GetTimetable", $hash, 0) if ($hash->{STATE} eq "disabled");
+            InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0) if ($hash->{STATE} eq "disabled");
             $hash->{STATE}='initialized';
             Log3 $name, 4, "DBPlan_Attr ($name) - interval timer enabled with interval $hash->{Interval} (sec)";
          } else {
@@ -227,20 +307,95 @@ sub DBPlan_Attr(@) {
 
       } elsif ($cmd eq "del") {
          RemoveInternalTimer($hash);
-         InternalTimer(gettimeofday()+2, "DBPlan_GetTimetable", $hash, 0) if ($hash->{STATE} eq "disabled");
+         InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0) if ($hash->{STATE} eq "disabled");
          $hash->{STATE}='initialized';
          Log3 $name, 4, "DBPlan_Attr ($name) - interval timer enabled with interval $hash->{Interval} (sec)";
       }
 
-   } elsif ($attrName eq "dbplan_base_url") {
+   } elsif ($attrName eq "dbplan_plan_url") {
       if($cmd eq "set") {
-        $hash->{BASE_URL} = $attrVal;
+        $hash->{PLAN_URL} = $attrVal;
         $attr{$name}{$attrName} = $attrVal;   
-        Log3 $name, 4, "DBPlan_Attr ($name) - url set to " . $hash->{BASE_URL};
       } elsif ($cmd eq "del") {
-        $hash->{BASE_URL} = 'http://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1';
-        Log3 $name, 4, "DBPlan_Attr ($name) - url set to " . $hash->{BASE_URL};
+        $hash->{PLAN_URL} = 'http://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1';
       }
+      Log3 $name, 4, "DBPlan_Attr ($name) - url set to " . $hash->{PLAN_URL};
+
+   } elsif ($attrName eq "dbplan_table_url") {
+      if($cmd eq "set") {
+        $hash->{TABLE_URL} = $attrVal;
+        $attr{$name}{$attrName} = $attrVal;   
+      } elsif ($cmd eq "del") {
+        $hash->{TABLE_URL} = 'http://reiseauskunft.bahn.de/bin/bhftafel.exe/dox?&rt=1&input=station';
+      }
+      Log3 $name, 4, "DBPlan_Attr ($name) - url set to " . $hash->{TABLE_URL};
+
+   } elsif ($attrName eq "dbplan_station") {
+      if($cmd eq "set") {
+        $hash->{helper}{STATION} = $attrVal;
+        $attr{$name}{$attrName} = $attrVal;
+
+        if(!defined($hash->{helper}{DESTINATION}) && ($hash->{BASE_TYPE} eq "plan")) {
+          $hash->{STATE} = 'defined';
+        } else {
+          $hash->{STATE} = 'initialized';
+        }
+        Log3 $name, 3, "DBPlan_Attr ($name) - station set to " . $hash->{helper}{STATION};
+
+      } elsif($cmd eq "del") {
+        delete($hash->{helper}{STATION}) if(defined($hash->{helper}{STATION}));
+        $hash->{STATE} = 'defined';
+        Log3 $name, 3, "DBPlan_Attr ($name) - deleted $attrName : $attrVal";
+      }
+
+   } elsif ($attrName eq "dbplan_destination") {
+      if($cmd eq "set") {
+        $hash->{helper}{DESTINATION} = $attrVal;
+        $attr{$name}{$attrName} = $attrVal;
+
+        unless(defined($hash->{helper}{STATION})) {
+          $hash->{STATE} = 'defined';
+        } else {
+          $hash->{STATE} = 'initialized';
+        }
+        Log3 $name, 3, "DBPlan_Attr ($name) - destination set to " . $hash->{helper}{DESTINATION};
+
+      } elsif ($cmd eq "del") {
+        if(($hash->{BASE_TYPE} eq "table") && defined($hash->{helper}{STATION})) {
+          $hash->{STATE} = 'initialized';
+        } else {
+          $hash->{STATE} = 'defined';
+        }
+        delete($hash->{helper}{DESTINATION}) if(defined($hash->{helper}{DESTINATION}));
+        Log3 $name, 3, "DBPlan_Attr ($name) - deleted $attrName : $attrVal";
+      }
+
+   } elsif ($attrName eq "dbplan-station-file") {
+      if($cmd eq "set") {
+        return DBPlan_loadStationFile($hash, $attrVal);
+
+      } elsif ($cmd eq "del") {
+        delete($hash->{helper}{STATION_NAMES}) if(defined($hash->{helper}{STATION_NAMES}));
+        Log3 $name, 3, "DBPlan_Attr ($name) - deleted $attrName : $attrVal";
+      }
+
+   } elsif ($attrName eq "dbplan-base-type") {
+      if($cmd eq "set") {
+        $hash->{BASE_TYPE} = $attrVal;
+        $attr{$name}{$attrName} = $attrVal;
+        RemoveInternalTimer($hash);
+        InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0);
+        $hash->{STATE}='initialized';
+
+      } elsif ($cmd eq "del") {
+        $hash->{BASE_TYPE} = 'plan';
+      }
+
+      my $ret;
+      $ret = fhem("deletereading $name table.*", 1);
+      $ret = fhem("deletereading $name plan.*", 1);
+      $ret = fhem("deletereading $name travel.*", 1);
+      Log3 $name, 4, "DBPlan_Attr ($name) - base type set to " . $hash->{BASE_TYPE};
 
    } else {
       if($cmd eq "set") {
@@ -312,6 +467,376 @@ sub DBPlan_options($)
 }
 
 #####################################
+# generating url with defined options
+sub DBPlan_make_url($) {
+
+    my ($hash) = @_;
+    my $name = $hash->{NAME};
+    my $plan_url = "";
+    my $oTmp;
+
+    my @prod_list = split("(,|\\|)", AttrVal($name, "dbplan_journey_prod", "none"));
+    my @opt_list = split("(,|\\|)", AttrVal($name, "dbplan_journey_opt", "none"));
+
+    my $products = DBPlan_products($hash);
+    my $options = DBPlan_options($hash);
+	
+    my $station = $hash->{helper}{STATION};
+    $station =~ s/ /+/g;
+
+    if($hash->{BASE_TYPE} eq "plan") {
+      $plan_url = $hash->{PLAN_URL};
+      $plan_url =~ s/departure/$station/;
+
+      $oTmp = $hash->{helper}{DESTINATION};
+      $oTmp =~ s/ /+/g;
+      $plan_url =~ s/destination/$oTmp/;
+
+      $oTmp = AttrVal($name, "dbplan_via_1", "");
+      $plan_url .= '&V1='.$oTmp if($oTmp ne "");
+
+      $oTmp = AttrVal($name, "dbplan_via_2", "");
+      $plan_url .= '&V2='.$oTmp if($oTmp ne "");
+
+      $oTmp = AttrVal($name, "dbplan_tariff_class", "");
+      $plan_url .= '&tariffClass='.$oTmp if($oTmp ne "");
+
+    } else {
+      $plan_url = $hash->{TABLE_URL};
+      $plan_url =~ s/station/$station/;
+
+      $oTmp = AttrVal($name, "dbplan_reg_train", "");
+      $oTmp =~ s/ /+/g;
+      $plan_url .= '&REQTrain_name=' . $oTmp;
+
+      $oTmp = AttrVal($name, "dbplan_delayed_Journey", "off");
+      $oTmp .= '&delayedJourney=' . $oTmp if($oTmp ne "off");
+
+      $oTmp = AttrVal($name, "dbplan_max_Journeys", "off");
+      $plan_url .= '&maxJourneys=' . $oTmp;
+
+      $plan_url .= '&boardType=' . substr(AttrVal($name, "dbplan_board_type", "depart"),0,3);
+
+    }
+
+    $plan_url .= '&journeyProducts='.$products if($products > 0);
+    $plan_url .= '&journeyOptions='.$options if($options > 0);
+
+    my $travel_date = AttrVal($name, "dbplan_travel-date", "");
+    my $travel_time = AttrVal($name, "dbplan_travel_time", "");
+    my $time_sel = AttrVal($name, "dbplan_time_selection", "depart");
+
+    $plan_url .= '&date='.$travel_date if($travel_date ne "");
+
+    $plan_url .= '&time='.$travel_time if($travel_time ne "");
+
+    if($travel_date ne "" || $travel_time ne "") {
+      $plan_url .= '&timesel='.$time_sel if($hash->{BASE_TYPE} eq "plan");
+    }
+
+    $oTmp = AttrVal($name, "dbplan_addon_options", "");
+    $plan_url .= $oTmp if($oTmp ne "");
+
+    $plan_url .= '&'; # see parameter description
+
+    if (exists($hash->{helper}{plain})) {
+       $plan_url =~ s/dox/dl/g;
+    }
+
+    Log3 $name, 4, "DBPlan ($name) - DB timetable: calling url: $plan_url";
+
+
+    return ($plan_url);
+
+}
+
+#####################################
+# Getting the DB main stationtable
+sub DBPlan_Get_DB_Plain_Text($) {
+
+    my ($hash) = @_;
+    my $name = $hash->{NAME};
+
+    my $param;
+    $param->{url}        = DBPlan_make_url($hash);
+    $param->{noshutdown} = AttrVal($name, "dbplan-remote-noshutdown", 0);
+    $param->{timeout}    = AttrVal($name, "dbplan-remote-timeout", 5);
+    $param->{loglevel}   = AttrVal($name, "dbplan-remote-loglevel", 4);
+                     
+    Log3 $name, 4, "DBPlan ($name) - Get_DB_Plain_Textget: DB plain text info";             
+    
+    my ($err, $data) = HttpUtils_BlockingGet($param);
+    
+    Log3 $name, 5, "DBPlan ($name) - Get_DB_Plain_Text: received http response code ".$param->{code} if(exists($param->{code}));
+    
+    if ($err ne "") 
+    {
+        Log3 $name, 3, "DBPlan ($name) - Get_DB_Plain_Text: got error while requesting DB info: $err";
+        return "got error while requesting DB info: $err";
+    }
+
+    if($data eq "" and exists($param->{code}))
+    {
+        Log3 $name, 3, "DBPlan ($name) - Get_DB_Plain_Text: received http code ".$param->{code}." without any data after requesting DB plain text";
+        return  "received no data after requesting DB plain text";
+    }
+
+    my $pattern = '\<PRE\>(.*?)\<\/PRE\>';
+
+    Log3 $name, 5, "DBPlan ($name) - $data";
+
+    Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Stationtable for plain text: finished";
+
+    if ($data =~ m/$pattern/is) {
+      return $1;
+    } else {
+      return ( "no information found" );
+    }
+
+    return ($data);
+
+}
+
+#####################################
+# Getting the DB main stationtable
+sub DBPlan_Get_DB_Info($)
+{
+    my ($hash) = @_;
+    my $name = $hash->{NAME};
+	
+    if($hash->{STATE} eq 'active' || $hash->{STATE} eq 'initialized'  || $hash->{STATE} eq 'defined') {
+       my $nt = gettimeofday()+$hash->{Interval};
+       $hash->{TRIGGERTIME} = $nt;
+       $hash->{TRIGGERTIME_FMT} = FmtDateTime($nt);
+       RemoveInternalTimer($hash);
+
+       InternalTimer($nt, "DBPlan_Get_DB_Info", $hash, 1) if (int($hash->{Interval}) > 0);
+
+       Log3 $name, 5, "DBPlan ($name) - DBPlan_Get_DB_Info: restartet InternalTimer with $hash->{Interval}";
+    }
+
+    unless(defined($hash->{helper}{STATION}))
+    {
+        Log3 $name, 3, "DBPlan ($name) - DBPlan_Get_DB_Info: no valid station defined";
+        return;
+    }
+
+    if($hash->{BASE_TYPE} eq "plan") {
+      unless(defined($hash->{helper}{DESTINATION}))
+      {
+        Log3 $name, 3, "DBPlan ($name) - Get_DB_Info: no valid destination defined";
+        return; 
+      }
+      $hash->{callback}   = \&DBPlan_Parse_Timetable;
+    } else {
+      $hash->{callback}   = \&DBPlan_Parse_Stationtable;
+    }
+    $hash->{url}        = DBPlan_make_url($hash);   #$plan_url;
+    $hash->{noshutdown} = AttrVal($name, "dbplan-remote-noshutdown", 0);
+    $hash->{timeout}    = AttrVal($name, "dbplan-remote-timeout", 5);
+    $hash->{loglevel}   = AttrVal($name, "dbplan-remote-loglevel", 4);
+
+    Log3 $name, 4, "DBPlan ($name) - DBPlan_Get_DB_Info: next getting $hash->{url}";
+
+    HttpUtils_NonblockingGet($hash);
+
+    return undef;
+
+}
+
+#####################################
+# Parsing the DB main station table
+#
+sub DBPlan_Parse_Stationtable($)
+{
+    my ($hash, $err, $data) = @_;
+    my $name = $hash->{NAME};
+
+    delete($hash->{error}) if(exists($hash->{error}));
+    
+    if ($err) {
+       Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Stationtable: got error in callback: $err";
+       return undef;
+    }
+
+    if($data eq "")
+    {
+       Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Stationtable: received http without any data after requesting DB stationtable";
+       return undef;
+    }
+
+    Log3 $name, 5, "DBPlan ($name) - DBPlan_Parse_Stationtable: Callback called with Hash: $hash, data: $data\r\n";
+
+    if(AttrVal($name, "verbose", 3) >= 5) {
+       $hash->{Stationtable} = $data;
+    }
+
+    ##################################################################################
+    # only for debugging
+    if(AttrVal($name, "verbose", 3) >= 5) {
+       readingsBeginUpdate($hash);
+       readingsBulkUpdate( $hash, "dbg_db_plan", $data );
+       readingsEndUpdate( $hash, 1 );
+    }
+
+    my $i;
+    my $ret;
+    my $defChar = AttrVal($name, "dbplan-default-char", "delete");
+
+    $ret = fhem("deletereading $name dbg.*", 1);
+
+    if($defChar eq "delete") {
+
+      $ret = fhem("deletereading $name table.*", 1);
+      $ret = fhem("deletereading $name db.*", 1);
+      Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Stationtable: readings deleted";
+
+    } else {
+
+      $defChar =" " if($defChar eq "nochar");
+	
+      readingsBeginUpdate($hash);
+
+      Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Stationtable: readings filled with: $defChar";
+    }
+
+    readingsEndUpdate( $hash, 1 );
+
+    my $pattern = '';
+
+    if ($data =~ m/\<div.class="haupt errormsg"\>(.*?)\<\/div\>/s) {
+        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃ¼fen.";
+        readingsBeginUpdate($hash);
+        readingsBulkUpdate( $hash, "table_error", "error in DB request: " . DBPlan_decode(DBPlan_html2uml($1)) );
+        readingsEndUpdate( $hash, 1 );
+        $pattern = '\<title\>Deutsche Bahn - Abfahrt\<\/title\>(.*?)\<p class="webtrack"\>';
+#        if ($data =~ m/$pattern/s) {
+#           my $error_text = DBPlan_html2txt($1);
+#           Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Stationtable: error description of DB stationtable request: $error_text";
+#        }
+        return undef;
+    }
+
+    Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Stationtable: successfully identified";
+
+    ##################################################################################
+    # Parsing connection table.
+    $pattern = '\<div.class="sqdetails.*?trow"\>.*?\<\/div\>';
+
+    my $count = 0;
+    my $index = "";
+    my $btype = AttrVal($name, "dbplan_board_type", "depart") . "_";
+
+    foreach my $line ($data =~ m/$pattern/gs) {
+      $count ++;
+      $index = $btype . sprintf("%02d", $count);
+
+      ##################################################################################
+      # only for debugging
+      if(AttrVal($name, "verbose", 3) >= 5) {
+         readingsBeginUpdate($hash);
+         readingsBulkUpdate( $hash, "dbg_connect_table_$index", $line ) if(defined($line));
+         readingsEndUpdate( $hash, 1 );
+      }
+
+      $line =~ s/\x0a//g;
+
+      Log3 $name, 5, "$line";
+
+      # $pattern = '<span class="bold">S     13</span></a>&gt;&gt;Sindorf<br /><span class="bold">15:34</span>&nbsp;<span class="okmsg">+2</span></span>,&nbsp;&nbsp;Gl. 2</div>';
+
+      my $table_row = "";
+
+      # Zug
+      $pattern = '\<span.class="bold"\>(.*?)\<\/span\>';
+      if ($line =~ m/$pattern/s) {
+        $table_row .= $1;
+      }
+
+      # n�chster Bahnhof
+      $pattern = '\<\/span\>\<\/a\>&gt;&gt;(.*?)\<br.\/\>\<span.class';
+      if ($line =~ m/$pattern/s) {
+        $table_row .= "|" . DBPlan_decode(DBPlan_html2uml($1));
+      }
+
+      # Uhrzeit
+      $pattern = '\<br.\/\>\<span.class="bold"\>(.*?)\<\/span\>&nbsp;';
+      if ($line =~ m/$pattern/s) {
+        $table_row .= "|" . $1;
+      }
+
+      # Versp�tung
+      $pattern = '\<span.class="okmsg"\>(.*?)\<\/span\>';
+      if ($line =~ m/$pattern/s) {
+        $table_row .= "|" . $1;
+      } else {
+        $table_row .= "|-";
+      }
+
+      # Versp�tung rot
+      $pattern = '\<span.class="red"\>(.*?)\<\/span\>,&nbsp;&nbsp;';
+      if ($line =~ m/$pattern/s) {
+        $table_row .= "|" . $1;
+      } else {
+        $table_row .= "|-";
+      }
+
+      # Gleis
+      $pattern = '&nbsp;&nbsp;(.*?)\<\/div\>';
+      my $pattern1 = '&nbsp;&nbsp;(.*?),\<br\/\>\<a.class="red.underline"';
+      my $pattern2 = '&nbsp;&nbsp;(.*?)\<br.\/\>\<span.class="red"\>.*?\<\/span\>\<br.\/\>';
+      if ($line =~ m/$pattern1/s) {
+        $table_row .= "|" . $1;
+      } elsif ($line =~ m/$pattern2/s) {
+        $table_row .= "|" . $1;
+      } else {
+        if ($line =~ m/$pattern/s) {
+          $table_row .= "|" . $1;
+        } else {
+          $table_row .= "|-";
+        }
+      }
+
+      # Hinweise
+      $pattern1 = '\<br\/\>\<a.class="red.underline".*?\<span.class="red"\>(.*?)\<\/span\>\<\/a\>\<\/span\>';
+      $pattern2 = '\<br.\/\>\<span.class="red.*?">(.*?)\<\/span>\<br.\/\>\<span.class="red.*?"\>(.*?)\<\/span\>\<\/div\>';
+      if ($line =~ m/$pattern1/s) {
+        # Ersatzfahrt&nbsp;ICE 2555
+        $table_row .= "|" . DBPlan_decode(DBPlan_html2uml($1));
+      } elsif ($line =~ m/$pattern2/s) {
+        $table_row .= "|" . DBPlan_decode(DBPlan_html2uml($1 . " " . $2));
+      } else {
+        $table_row .= "|-";
+      }
+
+      readingsBeginUpdate($hash);
+      readingsBulkUpdate( $hash, "table_$index", $table_row );
+      readingsEndUpdate( $hash, 1 );
+    
+    }
+
+    readingsBeginUpdate($hash);
+    unless($count) {
+
+      Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Stationtable: no station table found";
+      readingsBulkUpdate( $hash, "table_row_cnt", "0" );
+      readingsEndUpdate( $hash, 1 );
+      return undef;
+
+    } else {
+      Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Stationtable: table plans read successfully";
+
+      $hash->{STATE}='active' if($hash->{STATE} eq 'initialized' || $hash->{STATE} eq 'inactiv');
+
+      readingsBulkUpdate( $hash, "table_row_cnt", sprintf("%02d", $count));
+      readingsEndUpdate( $hash, 1 );
+    }
+
+    return undef;
+
+}
+
+#####################################
 # Parsing the DB travel notes
 sub DBPlan_Parse_Travel_Notes($)
 {
@@ -340,6 +865,17 @@ sub DBPlan_Parse_Travel_Notes($)
     # only for debugging
     if(AttrVal($name, "verbose", 3) >= 5) {
        readingsBulkUpdate( $hash, "dbg_travel_notes_HTML_1", $data );
+    }
+
+    ##################################################################################
+    # Parsing error information
+    $pattern = '\<div.class="errormsg"\>..(.*?)\<\/div\>';
+
+    if ($data =~ m/$pattern/s) {
+       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Error: travel error information for plan $index read successfully";
+       readingsBulkUpdate( $hash, "travel_note_error_$index", "Fahrt faellt aus");
+    } else {
+       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Error: no error information for plan $index found";
     }
 
     ##################################################################################
@@ -390,9 +926,9 @@ sub DBPlan_Parse_Travel_Notes($)
 
     ##################################################################################
     # Parsing deaparture plattform
-    $pattern = '\<\/span\>.*?(Gl.*?)\<br.\/\>.\<\/div\>.\<div.class="rline.haupt.mot"\>';
+    $pattern = '\<\/span\>.(Gl.*?).\<br.\/\>.\<\/div\>.\<div.class="rline.haupt.mot"\>';
 
-    $plattform = AttrVal($name, "dbplan-default-char", "none");
+    $plattform = 'none';
     if ($data =~ m/$pattern/s) {
        Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel departure plattform for plan $index read successfully";
        $plattform = $1;
@@ -402,21 +938,25 @@ sub DBPlan_Parse_Travel_Notes($)
 
     ##################################################################################
     # Parsing departure place
-    $pattern = '"rline.haupt.stationDark.routeStart".style="."\>.\<span.class="bold"\>(.*?)\<\/span\>';
+    $pattern = '"rline.haupt.routeStart".style="."\>.\<span.class="bold"\>(.*?)\<\/span\>';
 
     if ($data =~ m/$pattern/s) {
+       $plattform = DBPlan_html2uml($1).' - '.$plattform;
+       $plattform = DBPlan_decode($plattform);
        Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel departure for plan $index read successfully";
-       readingsBulkUpdate( $hash, "travel_departure_$index", $1.' - '.$plattform);
-    } else {
-       readingsBulkUpdate( $hash, "travel_departure_$index", $plattform) if(AttrVal($name, "dbplan-default-char", "none") ne "delete");
+       readingsBulkUpdate( $hash, "travel_departure_$index", $plattform);
+    } 
+
+    if ($plattform eq 'none') {
+       readingsBulkUpdate( $hash, "travel_departure_$index", $plattform) if(AttrVal($name, "dbplan-default-char", "delete") ne "delete");
        Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: no travel departure for plan $index found";
     }
 
     ##################################################################################
     # Parsing destination plattform
-    $pattern = '\<div.class="rline.haupt.routeEnd.*?"\>.*?(Gl.*?)\<br.\/\>.\<span.class="bold"\>.*?\<\/span\>';
+    $pattern = '\<div.class="rline.haupt.routeEnd.routeEnd__IV"\>.*?(Gl.*?).\<br.\/\>.\<span.class="bold"\>.*?\<\/span\>';
 
-    $plattform = "none";
+    $plattform = 'none';
     if ($data =~ m/$pattern/s) {
        Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel destination plattform for plan $index read successfully";
        $plattform = $1;
@@ -426,14 +966,18 @@ sub DBPlan_Parse_Travel_Notes($)
 
     ##################################################################################
     # Parsing destination place
-    $pattern = '\<div.class="rline.haupt.stationDark.routeEnd"\>.*?\<br.\/\>.\<span.class="bold"\>(.*?)\<\/span\>';
+    $pattern = '\<div.class="rline.haupt.routeEnd.routeEnd__IV"\>.*?\<br.\/\>.\<span.class="bold"\>(.*?)\<\/span\>';
 
     if ($data =~ m/$pattern/s) {
+       $plattform = DBPlan_html2uml($1).' - '.$plattform;
+       $plattform = DBPlan_decode($plattform);
        Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel destination for plan $index read successfully";
-       readingsBulkUpdate( $hash, "travel_destination_$index", $1.' - '.$plattform);
-    } else {
+       readingsBulkUpdate( $hash, "travel_destination_$index", $plattform);
+    } 
+
+    if ($plattform eq 'none') {
        Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: no travel destination for plan $index found";
-       readingsBulkUpdate( $hash, "travel_destination_$index", $plattform) if(AttrVal($name, "dbplan-default-char", "none") ne "delete");
+       readingsBulkUpdate( $hash, "travel_destination_$index", $plattform) if(AttrVal($name, "dbplan-default-char", "delete") ne "delete");
     }
 
     readingsEndUpdate($hash, 1);
@@ -462,94 +1006,8 @@ sub DBPlan_Parse_Travel_Notes($)
 }
 
 #####################################
-# Getting the DB main timetable
-sub DBPlan_GetTimetable($)
-{
-    my ($hash) = @_;
-    my $name = $hash->{NAME};
-    my $base_url = $hash->{BASE_URL};
-    my $departure = AttrVal($name, "dbplan_departure", undef);
-    my $destination = AttrVal($name, "dbplan_destination", undef);
-
-    my @prod_list = split("(,|\\|)", AttrVal($name, "dbplan_journey_prod", "none"));
-    my @opt_list = split("(,|\\|)", AttrVal($name, "dbplan_journey_opt", "none"));
-
-    my $products = DBPlan_products($hash);
-    my $options = DBPlan_options($hash);
-	
-    if($hash->{STATE} eq 'active' || $hash->{STATE} eq 'initialized') {
-       my $nt = gettimeofday()+$hash->{Interval};
-       $hash->{TRIGGERTIME} = $nt;
-       $hash->{TRIGGERTIME_FMT} = FmtDateTime($nt);
-       RemoveInternalTimer($hash);
-       InternalTimer($nt, "DBPlan_GetTimetable", $hash, 1) if (int($hash->{Interval}) > 0);
-       Log3 $name, 5, "DBPlan ($name) - DB timetable: restartet InternalTimer with $hash->{Interval}";
-    }
-
-    unless(defined($departure))
-    {
-        Log3 $name, 3, "DBPlan ($name) - DB timetable: no valid departure defined";
-        return;
-    }
-
-    unless(defined($destination))
-    {
-        Log3 $name, 3, "DBPlan ($name) - DB timetable: no valid destination defined";
-        return; 
-    }
-
-    $departure =~ s/ /+/g;
-    $base_url =~ s/departure/$departure/;
-
-    $destination =~ s/ /+/g;
-    $base_url =~ s/destination/$destination/;
-
-    $base_url .= '&journeyProducts='.$products if($products > 0);
-    $base_url .= '&journeyOptions='.$options if($options > 0);
-
-    my $oTmp = AttrVal($name, "dbplan_via_1", "");
-    $base_url .= '&V1='.$oTmp if($oTmp ne "");
-
-    $oTmp = AttrVal($name, "dbplan_via_2", "");
-    $base_url .= '&V2='.$oTmp if($oTmp ne "");
-
-    $oTmp = AttrVal($name, "dbplan_tariff_class", "");
-    $base_url .= '&tariffClass='.$oTmp if($oTmp ne "");
-
-    $oTmp = AttrVal($name, "dbplan_addon_options", "");
-    $base_url .= $oTmp if($oTmp ne "");
-
-    my $travel_date = AttrVal($name, "dbplan-travel-date", "");
-    my $travel_time = AttrVal($name, "dbplan-travel-time", "");
-    my $time_sel = AttrVal($name, "dbplan-time-selection", "depart");
-
-    $base_url .= '&date='.$travel_date if($travel_date ne "");
-
-    $base_url .= '&time='.$travel_time if($travel_time ne "");
-
-    if($travel_date ne "" || $travel_time ne "") {
-      $base_url .= '&timesel='.$time_sel;
-    }
-
-    $base_url .= '&'; # see parameter description
-
-    Log3 $name, 3, "DBPlan ($name) - DB timetable: calling url: $base_url";
-
-    $hash->{url}        = $base_url;
-    $hash->{callback}   = \&DBPlan_Parse_Timetable;
-    $hash->{noshutdown} = AttrVal($name, "dbplan-remote-noshutdown", 0);
-    $hash->{timeout}    = AttrVal($name, "dbplan-remote-timeout", 5);
-    $hash->{loglevel}   = 4;
-
-    Log3 $name, 4, "DBPlan ($name) - DB timetable: next getting $hash->{url}";
-
-    HttpUtils_NonblockingGet($hash);
-
-}
-
-#####################################
 # Parsing the DB main timetable
-#      delete($hash->{READINGS})
+#
 sub DBPlan_Parse_Timetable($)
 {
     my ($hash, $err, $data) = @_;
@@ -559,13 +1017,13 @@ sub DBPlan_Parse_Timetable($)
     
     if ($err) {
        Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Timetable: got error in callback: $err";
-       return;
+       return undef;
     }
 
     if($data eq "")
     {
        Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Timetable: received http without any data after requesting DB timetable";
-       return;
+       return undef;
     }
 
     Log3 $name, 5, "DBPlan ($name) - DBPlan_Parse_Timetable: Callback called with Hash: $hash, data: $data\r\n";
@@ -584,7 +1042,7 @@ sub DBPlan_Parse_Timetable($)
 
     my $i;
     my $ret;
-    my $defChar = AttrVal($name, "dbplan-default-char", "none");
+    my $defChar = AttrVal($name, "dbplan-default-char", "delete");
 
     $ret = fhem("deletereading $name dbg.*", 1);
 
@@ -592,7 +1050,7 @@ sub DBPlan_Parse_Timetable($)
 
       $ret = fhem("deletereading $name plan.*", 1);
       $ret = fhem("deletereading $name travel.*", 1);
-      Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Timetable: readings deleted";
+      Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: readings deleted";
 
     } else {
 
@@ -634,19 +1092,19 @@ sub DBPlan_Parse_Timetable($)
            my $error_text = DBPlan_html2txt($1);
            Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Timetable: error description of DB timetable request: $error_text";
         }
-        return;
+        return undef;
     }
 
 
-    Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Timetable: successfully identified";
+    Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: successfully identified";
 
     ##################################################################################
-    # Parsing connection plans. DB timetable will show three connection plans
-    $pattern = '\<td.class="overview.timelink"\>(.*?)\/td\>\<\/tr\>\<tr'
+    # Testing correct answer. DB timetable will show three connection plans
+    $pattern = 'verbindung.start.=.new.Object\(\);(.*?)digitalData.verbindung.push\(verbindung\)'
               .'.*?'
-              .'\<td.class="overview.timelink"\>(.*?)\/td\>\<\/tr\>\<tr'
+              .'verbindung.start.=.new.Object\(\);(.*?)digitalData.verbindung.push\(verbindung\)'
               .'.*?'
-              .'\<td class="overview timelink"\>(.*?)\/td\>\<\/tr\>\<tr';
+              .'verbindung.start.=.new.Object\(\);(.*?)digitalData.verbindung.push\(verbindung\)';
 
     if ($data =~ m/$pattern/s) {
       ##################################################################################
@@ -658,17 +1116,17 @@ sub DBPlan_Parse_Timetable($)
          readingsBulkUpdate( $hash, "dbg_connect_plan_3", $3 ) if(defined($3));
          readingsEndUpdate( $hash, 1 );
       }
-      Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Timetable: connection plans read successfully";
+      Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: connection plans read successfully";
 
-      $hash->{STATE}='active' if($hash->{STATE} eq 'initialized' || $hash->{STATE} eq 'stopped');
+      $hash->{STATE}='active' if($hash->{STATE} eq 'initialized' || $hash->{STATE} eq 'inactiv');
 
     } else {
       Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Timetable: no connection plans found";
-      return;
+      return undef;
     }
 
     ##################################################################################
-    # Parsing each connection plan (Three is default)
+    # Extracting connection plan with TableExtract (Three is default)
 
     my @plan;
     my @planrow;
@@ -700,7 +1158,7 @@ sub DBPlan_Parse_Timetable($)
     # Log3 $name, 2, $data;
     
     my @headers = split(/ /, AttrVal($name, "dbplan-table-headers", "An Leer Dauer Preis"));
-    Log3 $name, 3, "DBPlan ($name) - Timetable-Headers: @headers";
+    Log3 $name, 4, "DBPlan ($name) - Timetable-Headers: @headers";
     my $timetable = HTML::TableExtract->new( headers => \@headers );
     my $retRow = "";
 
@@ -712,12 +1170,16 @@ sub DBPlan_Parse_Timetable($)
     my $filler = "";
 
     foreach my $ts ($timetable->tables) {
+      Log3 $name, 5, "DBPlan ($name) - Timetable: Erste Schleife";
+
       foreach my $row ($timetable->rows) {
+        Log3 $name, 5, "DBPlan ($name) - Timetable: Zweite Schleife";
 
         Log3 $name, 4, "DBPlan ($name) - Timetable-Org1: $retRow";
 
         if(@$row) {
-          $retRow = join(';', @$row);
+          my @myValues = map defined($_) ? $_ : '', @$row;
+          $retRow = join(';', @myValues);
           $retRow =~ s/\n|\r/;/g; #s,[\r\n]*,,g;
           if($defChar ne "delete") {
             $retRow =~ s/Â /$defChar/g;
@@ -738,7 +1200,7 @@ sub DBPlan_Parse_Timetable($)
       readingsBulkUpdate( $hash, "plan_error", "Error HTML::TableExtract failed" );
       readingsEndUpdate( $hash, 1 );
 
-      return;
+      return undef;
     }
 
     readingsBeginUpdate($hash);
@@ -811,6 +1273,19 @@ sub DBPlan_Parse_Timetable($)
 
 #####################################
 # replaces all HTML entities to their utf-8 counter parts.
+# c3 bc = �
+# c3 9f = �
+# c3 b6 = �
+# c3 a4 = �
+# c3 84 = �
+# c3 96 = �
+# c3 9c = �
+# c2 ab = "
+# c2 bb = "
+# e2 80 = ""
+# c2 ad = -
+#
+
 sub DBPlan_html2txt($)
 {
 
@@ -818,19 +1293,112 @@ sub DBPlan_html2txt($)
 
     $string =~ s/&nbsp;/ /g;
     $string =~ s/&amp;/&/g;
-    $string =~ s/(\xe4|&auml;|\\u00e4|\\u00E4)/Ã¤/g;
-    $string =~ s/(\xc4|&Auml;|\\u00c4|\\u00C4)/Ã„/g;
-    $string =~ s/(\xf6|&ouml;|\\u00f6|\\u00F6)/Ã¶/g;
-    $string =~ s/(\xd6|&Ouml;|\\u00d6|\\u00D6)/Ã–/g;
-    $string =~ s/(\xfc|&uuml;|\\u00fc|\\u00FC)/Ã¼/g;
-    $string =~ s/(\xdc|&Uuml;|\\u00dc|\\u00DC)/Ãœ/g;
-    $string =~ s/(\xdf|&szlig;)/ÃŸ/g;
+    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/Ã¤/g;
+    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/Ã„/g;
+    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/Ã¶/g;
+    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/Ã–/g;
+    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/Ã¼/g;
+    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/Ãœ/g;
+    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/ÃŸ/g;
     $string =~ s/<.+?>//g;
     $string =~ s/(^\s+|\s+$)//g;
 
     return trim($string);
 
 }
+
+sub DBPlan_html2uml($)
+{
+
+    my ($string) = @_;
+
+    $string =~ s/&nbsp;/ /g;
+    $string =~ s/&amp;/&/g;
+    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/�/g;
+    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/�/g;
+    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/�/g;
+    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/�/g;
+    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/�/g;
+    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/�/g;
+    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/�/g;
+    $string =~ s/<.+?>//g;
+    $string =~ s/(^\s+|\s+$)//g;
+
+    return trim($string);
+
+}
+
+sub DBPlan_decode($) {
+  my($text) = @_;  
+  $text =~ s/�/ä/g;
+  $text =~ s/�/Ä/g;
+  $text =~ s/�/ö/g;
+  $text =~ s/�/�/g;
+  $text =~ s/�/ü/g;
+  $text =~ s/�/Ü/g;
+  $text =~ s/�/ß/g;
+  $text =~ s/�/´/g;
+  $text =~ s/"//g;  
+  return $text;
+}
+
+#####################################
+# loads the stations from file
+sub DBPlan_loadStationFile($;$)
+{
+  my ($hash, $file) = @_;
+
+  my @stationfile;
+  my @tmpline;
+  my $name = $hash->{NAME};
+  my $err;
+  $file = AttrVal($hash->{NAME}, "dbplan-station-file", "") unless(defined($file));
+
+  if($file ne "" and -r $file)
+  { 
+     delete($hash->{helper}{STATIONFILE}) if(defined($hash->{helper}{STATIONFILE}));
+     delete($hash->{helper}{STATION_NAMES}) if(defined($hash->{helper}{STATION_NAMES}));
+  
+     Log3 $hash->{NAME}, 3, "DBPlan ($name) - loading station file $file";
+        
+     ($err, @stationfile) = FileRead($file);
+        
+     unless(defined($err) and $err)
+     {      
+       foreach my $line (@stationfile)
+       {
+         if(not $line =~ /^\s*$/)
+         {
+           chomp $line;
+
+           $line =~ s/\n|\r//;
+
+           Log3 $name, 5, "DBPlan ($name) - $line " . $tmpline[6];
+
+           @tmpline = split(";", $line);
+
+           if(@tmpline >= 2)
+           {
+             $hash->{helper}{STATION_NAMES}{$tmpline[0]} = $tmpline[6];
+           }
+         }
+       }
+
+       my $count_stations = scalar keys %{$hash->{helper}{STATION_NAMES}};
+       Log3 $name, 2, "DBPlan ($name) - read ".($count_stations > 0 ? $count_stations : "no")." station".($count_stations == 1 ? "" : "s")." from station file"; 
+    }
+    else
+    {
+      Log3 $name, 3, "DBplan ($name) - could not open station file: $err";
+    }
+  }
+  else
+  {
+    Log3 $name, 3, "DBPlan ($name) - unable to access station file: $file";
+    return ("unable to access station file: $file");
+  }
+}
+
 
 #####################################
 # only for testing regular expressions
@@ -864,6 +1432,8 @@ sub RegExTest()
 	This module provides a generic way to retrieve information remote from a Fritz!Box and store them in Readings. 
 	It queries a given URL with Headers and data defined by attributes. 
 	From the HTTP Response it extracts Readings named in attributes using Regexes also defined by attributes.
+       The file with the IBNR codes and stations of Deutsche Bahn can be download at http://www.michaeldittrich.de/ibnr.
+
 	<br><br>
 	<b>Prerequisites</b>
 	<ul>
@@ -879,7 +1449,7 @@ sub RegExTest()
 	<ul>
 		<li><b>initialized</b></li>
 			the device is definied, but no successfully request and parsing has been done<br>
-                     this stae will also be set when changing from stopped to start and disabled to enabled<br>
+                     this state will also be set when changing from <inactiv> to <activ> and <disabled> to <enabled><br>
 		<li><b>active</b></li>
 			the device is working<br>
 		<li><b>stopped</b></li>
@@ -908,7 +1478,7 @@ sub RegExTest()
 	<ul>
 		Example for a timetable query:<br><br>
 		<ul><code>
-                   attr DB_Test dbplan_departure KÃƒÂ¶ln-Weiden West
+                   attr DB_Test dbplan_station  KÃƒÂ¶ln-Weiden West
                    attr DB_Test dbplan_destination KÃƒÂ¶ln HBF
                    attr DB_Test room OPNV
 		</code></ul>
@@ -940,24 +1510,36 @@ sub RegExTest()
 	<ul>
 		<li><a href="#readingFnAttributes">readingFnAttributes</a></li>
 		<br>
-		<li><b>dbplan_departure</b></li>
+		<li><b>dbplan_station</b></li>
 			place of departure<br>
 		<li><b>dbplan_destination</b></li>
 			place of destination<br>
-		<li><b>dbplan_journey_prod</b></li>
-			DB travel products like: ICE<br>
-		<li><b>dbplan_journey_opt</b></li>
-			DB journey options like: direct connection<br>
 		<li><b>dbplan_via_1</b></li>
 			DB first via station<br>
 		<li><b>dbplan_via_2</b></li>
 			DB second via station<br>
+		<li><b>dbplan_journey_prod</b></li>
+			DB travel products like: ICE<br>
+		<li><b>dbplan_journey_opt</b></li>
+			DB journey options like: direct connection<br>
 		<li><b>dbplan_tariff_class</b></li>
 			DB tariff class: 1 or 2 class<br>
+		<li><b>dbplan_board_type</b></li>
+			DB board type: departure or arrival<br>
+		<li><b>dbplan_delayed_Journey</b></li>
+			DB delayed journey: on or off<br>
+		<li><b>dbplan_max_Journeys</b></li>
+			tbd<br>
+		<li><b>dbplan_reg_train</b></li>
+			tbd<br>
+		<li><b>dbplan_travel_date</b></li>
+			Define the date of travel in dd.mm.yy. Default: actual date.<br>
+		<li><b>dbplan_travel_time</b></li>
+			Define the time of travel in hh:mm. Default: actual time.<br>
 		<li><b>dbplan_addon_options</b></li>
 			extended options like discribed in the api document: <li><a http://webcache.googleusercontent.com/search?q=cache:wzb_OlIUCBQJ:www.geiervally.lechtal.at/sixcms/media.php/1405/Parametrisierte%2520%25DCbergabe%2520Bahnauskunft(V%25205.12-R4.30c,%2520f%25FCr.pdf+&cd=3&hl=de&ct=clnk&gl=de
 ">Parametrisierte Ãœbergabe Bahnauskunft</a></li><br>
-		<li><b>dbplan_disable</b></li>
+		<li><b>dbplan-disable</b></li>
 			If set to 1 polling of DB Url will be stopped, setting to 0 or deleting will activate polling<br>
 		<li><b>dbplan-default-char</b></li>
 			Define a string which will be displayed if no information is available. Defaultstring: "none"<br>
@@ -969,12 +1551,12 @@ sub RegExTest()
 			Define the noshutdown for all http get. Default is 0=noshutdown connection.<br>
 		<li><b>dbplan-remote-loglevel</b></li>
 			Define the loglevel for all http get. Default is loglevel 4.<br>
-		<li><b>dbplan-travel-date</b></li>
-			Define the date of travel in dd.mm.yy. Default: actual date.<br>
-		<li><b>dbplan-travel-time</b></li>
-			Define the time of travel in hh:mm. Default: actual time.<br>
-		<li><b>dbplan-travel-selection</b></li>
-			Define if date / time is departure or arrival. Default: departure<br>
+		<li><b>dbplan-tabel-headers</b></li>
+			tbd<br>
+		<li><b>dbplan-station-file</b></li>
+			tbd<br>
+		<li><b>dbplan-base-type</b></li>
+			tbd<br>
 	</ul>
        <br>
 	<a name="DBPlanReadings"></a>
