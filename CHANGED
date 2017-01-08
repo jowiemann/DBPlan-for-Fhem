@@ -1,4 +1,12 @@
 04.01.2017
+ - Hinweismeldungen für Verbindungen wieder verfügbar.
+ - Sonderzeichen in der Bahnhofsanzeige korrigiert.
+ - Neuer zweiter optionaler Parameter im Define: time offset in Minuten. Wenn gesetzt wird die Abfrage Anzahl Minuten in die Zukunft vorverlegt.
+ - Neues set timeOffset. Hiermit kann das definierte time offset überschrieben werden.
+ - Parameterstandardwert für noshutdown für nonblocking, siehe Doku HTTPMOD, von 0 auf 1 geändert.
+ - Kleinere Fehlerkorrekturen
+
+04.01.2017
  - Veränderungen in den HTML-Seiten der DB nachgezogen.
  - Log3 level überprüft
  - kleine Schönheitsfehler beseitigt
