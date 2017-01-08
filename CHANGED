@@ -4,6 +4,7 @@
  - Neuer zweiter optionaler Parameter im Define: time offset in Minuten. Wenn gesetzt wird die Abfrage Anzahl Minuten in die Zukunft vorverlegt.
  - Neues set timeOffset. Hiermit kann das definierte time offset überschrieben werden.
  - Parameterstandardwert für noshutdown für nonblocking, siehe Doku HTTPMOD, von 0 auf 1 geändert.
+ - Neues Reading travel_vehicle_nr_(1..3): Anzeige der Zug, Bus,... Bezeichnung / Nummer
  - Kleinere Fehlerkorrekturen
 
 04.01.2017
