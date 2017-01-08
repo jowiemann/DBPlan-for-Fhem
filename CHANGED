@@ -1,4 +1,4 @@
-04.01.2017
+08.01.2017
  - Hinweismeldungen für Verbindungen wieder verfügbar.
  - Sonderzeichen in der Bahnhofsanzeige korrigiert.
  - Neuer zweiter optionaler Parameter im Define: time offset in Minuten. Wenn gesetzt wird die Abfrage Anzahl Minuten in die Zukunft vorverlegt.
