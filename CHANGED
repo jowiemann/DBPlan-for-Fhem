@@ -1,3 +1,11 @@
+18.01.2017
+ - Fehler bei userReadings behoben (Log-Eintrag: readingsUpdate(DBPlan,row1,none) missed to call readingsBeginUpdate first).
+ - Fehler bei stateFormat behoben (Automatische Aktualisierung funktionierte nicht).
+ - showStations als get entfernt.
+ - searchStation zeigt ohne Suchbegriff alle Bahnhöfe.
+ - commandref angepasst.
+ - kleinere Fehlerkorrekturen.
+
 08.01.2017
  - Hinweismeldungen für Verbindungen wieder verfügbar.
  - Sonderzeichen in der Bahnhofsanzeige korrigiert.
