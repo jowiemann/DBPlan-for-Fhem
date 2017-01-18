@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 71843 2017-01-18 12:47:00Z jowiemann $
+# $Id: 98_DBPlan.pm 71738 2017-01-18 13:49:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
@@ -863,8 +863,10 @@ sub DBPlan_Parse_Stationtable($)
     } else {
       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Stationtable: table plans read successfully";
 
-      $hash->{DevState}='active' if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactiv');
-      $hash->{STATE}='active' if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactiv');
+      if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactiv') {
+        $hash->{DevState}='active' ;
+        $hash->{STATE}='active';
+      }
 
       readingsBeginUpdate($hash);
       readingsBulkUpdate( $hash, "table_row_cnt", sprintf("%02d", $count));
@@ -1255,8 +1257,10 @@ sub DBPlan_Parse_Timetable($)
       }
       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: connection plans read successfully";
 
-      $hash->{DevState}='active' if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactiv');
-      $hash->{STATE}='active' if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactiv');
+      if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactiv') {
+        $hash->{DevState}='active';
+        $hash->{STATE}='active';
+      }
 
     } else {
       Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Timetable: no connection plans found";
