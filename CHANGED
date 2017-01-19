@@ -1,4 +1,7 @@
 19.01.2017
+ - gelegendlicher Fehler 2ter Versuch: PERL WARNING: Use of uninitialized value in string ne at... behoben .
+
+19.01.2017
  - gelegendlicher Fehler: PERL WARNING: Use of uninitialized value in string ne at... behoben .
 
 18.01.2017
