@@ -1,3 +1,6 @@
+19.01.2017
+ - gelegendlicher Fehler: PERL WARNING: Use of uninitialized value in string ne at... behoben .
+
 18.01.2017
  - Fehler bei userReadings behoben (Log-Eintrag: readingsUpdate(DBPlan,row1,none) missed to call readingsBeginUpdate first).
  - Fehler bei stateFormat behoben (Automatische Aktualisierung funktionierte nicht).
