@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 71738 2017-01-18 13:49:00Z jowiemann $
+# $Id: 98_DBPlan.pm 72920 2017-01-19 18:49:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
@@ -1349,7 +1349,16 @@ sub DBPlan_Parse_Timetable($)
 
     for($i=1; $i<=3; $i++) {
 
-       my ($d_time, $a_time, $d_delay, $a_delay, $change, $duration, $prod, $price) = split(";", $planrow[$i]);
+       my $d_time="";
+       my $a_time="";
+       my $d_delay="";
+       my $a_delay="";
+       my $change="";
+       my $duration="";
+       my $prod="";
+       my $price="";
+       
+       ($d_time, $a_time, $d_delay, $a_delay, $change, $duration, $prod, $price) = split(";", $planrow[$i]);
 
        $prod = "" unless(defined($prod));
        $price = "" unless(defined($price));
