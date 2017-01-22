@@ -1,8 +1,8 @@
-19.01.2017
- - gelegentlicher Fehler 2ter Versuch: PERL WARNING: Use of uninitialized value in string ne at... behoben .
+22.01.2017
+ - Kleinere Fehlerkorrekturen.
 
 19.01.2017
- - gelegentlicher Fehler: PERL WARNING: Use of uninitialized value in string ne at... behoben .
+ - gelegentlicher Fehler: PERL WARNING: Use of uninitialized value in string ne at... behoben.
 
 18.01.2017
  - Fehler bei userReadings behoben (Log-Eintrag: readingsUpdate(DBPlan,row1,none) missed to call readingsBeginUpdate first).
