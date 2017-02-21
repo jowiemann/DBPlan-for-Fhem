@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 71305 2017-01-22 09:30:00Z jowiemann $
+# $Id: 98_DBPlan.pm 71553 2017-02-03 19:38:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
@@ -115,19 +115,23 @@ sub DBPlan_Define($$) {
 
     InternalTimer($nt, "DBPlan_Get_DB_Info", $hash, 0);
 
-    unless(defined($hash->{helper}{STATION}))
+    unless(defined($hash->{helper}{STATION}) || (defined($hash->{helper}{DESTINATION}) && $hash->{BASE_TYPE} eq "plan"))
     {
-        $hash->{state} = 'defined';
+        $hash->{DevState} = 'defined';
+        $hash->{STATE} = 'defined';
+
         return undef;
     }
 
-    unless(defined($hash->{helper}{DESTINATION}) && $hash->{BASE_TYPE} eq "plan")
-    {
-        $hash->{state} = 'defined';
-        return undef; 
-    }
+#    unless(defined($hash->{helper}{DESTINATION}) && $hash->{BASE_TYPE} eq "plan")
+#    {
+#        $hash->{DevState} = 'defined';
+#        $hash->{STATE} = 'defined';
+#        return undef; 
+#    }
 
-    $hash->{state} = 'initialized';
+    $hash->{DevState} = 'initialized';
+    $hash->{STATE} = 'initialized';
     
     return undef;
 }
@@ -331,7 +335,7 @@ sub DBPlan_Attr(@) {
       if($cmd eq "set") {
          if($attrVal eq "0") {
             RemoveInternalTimer($hash);
-            InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0) if ($hash->{DevState} eq "disabled");
+            InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0); # if ($hash->{DevState} eq "disabled");
             $hash->{DevState}='initialized';
             $hash->{STATE}='initialized';
             Log3 $name, 4, "DBPlan_Attr ($name) - interval timer enabled with interval $hash->{Interval} (sec)";
@@ -399,6 +403,7 @@ sub DBPlan_Attr(@) {
           $hash->{DevState} = 'defined';
           $hash->{STATE} = 'defined';
         } else {
+          $hash->{DevState} = 'initialized';
           $hash->{STATE} = 'initialized';
         }
         Log3 $name, 3, "DBPlan_Attr ($name) - destination set to " . $hash->{helper}{DESTINATION};
@@ -681,6 +686,7 @@ sub DBPlan_Get_DB_Info($)
     } else {
       $hash->{callback}   = \&DBPlan_Parse_Stationtable;
     }
+
     $hash->{url}        = DBPlan_make_url($hash);   #$plan_url;
     $hash->{noshutdown} = AttrVal($name, "dbplan-remote-noshutdown", 1);
     $hash->{timeout}    = AttrVal($name, "dbplan-remote-timeout", 5);
