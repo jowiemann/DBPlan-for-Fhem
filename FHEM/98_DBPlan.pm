@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 71553 2017-02-03 19:38:00Z jowiemann $
+# $Id: 98_DBPlan.pm 72737 2017-04-20 13:15:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
@@ -69,6 +69,8 @@ sub DBPlan_Define($$) {
 
     my ( $hash, $def ) = @_;
     my @a = split( "[ \t][ \t]*", $def );
+
+    $hash->{version} = '19.04.2017';
     
     return "DBPlan_Define - too few parameters: define <name> DBPlan <interval> [<time offset>]" if( (@a < 3) || (@a > 4));
 
@@ -118,20 +120,22 @@ sub DBPlan_Define($$) {
     unless(defined($hash->{helper}{STATION}) || (defined($hash->{helper}{DESTINATION}) && $hash->{BASE_TYPE} eq "plan"))
     {
         $hash->{DevState} = 'defined';
-        $hash->{STATE} = 'defined';
-
+        #$hash->{state} = 'defined';
+        readingsSingleUpdate($hash, "state", "defined", 1);
         return undef;
     }
 
 #    unless(defined($hash->{helper}{DESTINATION}) && $hash->{BASE_TYPE} eq "plan")
 #    {
 #        $hash->{DevState} = 'defined';
-#        $hash->{STATE} = 'defined';
+#        $hash->{state} = 'defined';
+#        readingsSingleUpdate($hash, "state", "defined", 1);
 #        return undef; 
 #    }
 
     $hash->{DevState} = 'initialized';
-    $hash->{STATE} = 'initialized';
+    #$hash->{state} = 'initialized';
+    readingsSingleUpdate($hash, "state", "initialized", 1);    
     
     return undef;
 }
@@ -279,7 +283,9 @@ sub DBPlan_Set($@) {
    elsif ($cmd eq 'inactiv')
    {
       $hash->{DevState} = 'inactiv';
-      $hash->{STATE} = 'inactiv';
+      #$hash->{state} = 'inactiv';
+      readingsSingleUpdate($hash, "state", "inactiv", 1);
+
       RemoveInternalTimer($hash);    
       Log3 $name, 3, "DBPlan_Set ($name) - interval timer set to inactiv";
 
@@ -291,7 +297,9 @@ sub DBPlan_Set($@) {
       RemoveInternalTimer($hash);
       InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0) if ($hash->{DevState} eq "inactiv");
       $hash->{DevState}='initialized';
-      $hash->{STATE}='initialized';
+      #$hash->{state}='initialized';
+      readingsSingleUpdate($hash, "state", "initialized", 1);
+
       Log3 $name, 3, "DBPlan_Set ($name) - interval timer started with interval $hash->{Interval} (sec)";
 
       return undef;
@@ -337,11 +345,13 @@ sub DBPlan_Attr(@) {
             RemoveInternalTimer($hash);
             InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0); # if ($hash->{DevState} eq "disabled");
             $hash->{DevState}='initialized';
-            $hash->{STATE}='initialized';
+            #$hash->{state}='initialized';
+            readingsSingleUpdate($hash, "state", "initialized", 1);
             Log3 $name, 4, "DBPlan_Attr ($name) - interval timer enabled with interval $hash->{Interval} (sec)";
          } else {
             $hash->{DevState} = 'disabled';
-            $hash->{STATE} = 'disabled';
+            #$hash->{state} = 'disabled';
+            readingsSingleUpdate($hash, "state", "disabled", 1);
             RemoveInternalTimer($hash);    
             Log3 $name, 4, "DBPlan_Attr ($name) - interval timer disabled";
          }
@@ -351,7 +361,8 @@ sub DBPlan_Attr(@) {
          RemoveInternalTimer($hash);
          InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0) if ($hash->{DevState} eq "disabled");
          $hash->{DevState}='initialized';
-         $hash->{STATE}='initialized';
+         #$hash->{state}='initialized';
+         readingsSingleUpdate($hash, "state", "initialized", 1);
          Log3 $name, 4, "DBPlan_Attr ($name) - interval timer enabled with interval $hash->{Interval} (sec)";
       }
 
@@ -380,17 +391,20 @@ sub DBPlan_Attr(@) {
 
         if(!defined($hash->{helper}{DESTINATION}) && ($hash->{BASE_TYPE} eq "plan")) {
           $hash->{DevState} = 'defined';
-          $hash->{STATE} = 'defined';
+          #$hash->{state} = 'defined';
+          readingsSingleUpdate($hash, "state", "defined", 1);
         } else {
           $hash->{DevState} = 'initialized';
-          $hash->{STATE} = 'initialized';
+          #$hash->{state} = 'initialized';
+          readingsSingleUpdate($hash, "state", "initialized", 1);
         }
         Log3 $name, 3, "DBPlan_Attr ($name) - station set to " . $hash->{helper}{STATION};
 
       } elsif($cmd eq "del") {
         delete($hash->{helper}{STATION}) if(defined($hash->{helper}{STATION}));
         $hash->{DevState} = 'defined';
-        $hash->{STATE} = 'defined';
+        #$hash->{state} = 'defined';
+        readingsSingleUpdate($hash, "state", "defined", 1);
         Log3 $name, 3, "DBPlan_Attr ($name) - deleted $attrName : $attrVal";
       }
 
@@ -401,20 +415,24 @@ sub DBPlan_Attr(@) {
 
         unless(defined($hash->{helper}{STATION})) {
           $hash->{DevState} = 'defined';
-          $hash->{STATE} = 'defined';
+          #$hash->{state} = 'defined';
+          readingsSingleUpdate($hash, "state", "defined", 1);
         } else {
           $hash->{DevState} = 'initialized';
-          $hash->{STATE} = 'initialized';
+          #$hash->{state} = 'initialized';
+          readingsSingleUpdate($hash, "state", "initialized", 1);
         }
         Log3 $name, 3, "DBPlan_Attr ($name) - destination set to " . $hash->{helper}{DESTINATION};
 
       } elsif ($cmd eq "del") {
         if(($hash->{BASE_TYPE} eq "table") && defined($hash->{helper}{STATION})) {
           $hash->{DevState} = 'initialized';
-          $hash->{STATE} = 'initialized';
+          #$hash->{state} = 'initialized';
+          readingsSingleUpdate($hash, "state", "initialized", 1);
         } else {
           $hash->{DevState} = 'defined';
-          $hash->{STATE} = 'defined';
+          #$hash->{state} = 'defined';
+          readingsSingleUpdate($hash, "state", "defined", 1);
         }
         delete($hash->{helper}{DESTINATION}) if(defined($hash->{helper}{DESTINATION}));
         Log3 $name, 3, "DBPlan_Attr ($name) - deleted $attrName : $attrVal";
@@ -436,7 +454,8 @@ sub DBPlan_Attr(@) {
         RemoveInternalTimer($hash);
         InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0);
         $hash->{DevState}='initialized';
-        $hash->{STATE}='initialized';
+        #$hash->{state}='initialized';
+        readingsSingleUpdate($hash, "state", "initialized", 1);
 
       } elsif ($cmd eq "del") {
         $hash->{BASE_TYPE} = 'plan';
@@ -871,7 +890,8 @@ sub DBPlan_Parse_Stationtable($)
 
       if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactiv') {
         $hash->{DevState}='active' ;
-        $hash->{STATE}='active';
+        #$hash->{state}='active';
+        readingsSingleUpdate($hash, "state", "activ", 1);
       }
 
       readingsBeginUpdate($hash);
@@ -1271,7 +1291,8 @@ sub DBPlan_Parse_Timetable($)
 
       if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactiv') {
         $hash->{DevState}='active';
-        $hash->{STATE}='active';
+        #$hash->{state}='active';
+        readingsSingleUpdate($hash, "state", "active", 1);
       }
 
     } else {
