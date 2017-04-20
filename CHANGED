@@ -1,3 +1,6 @@
+20.04.2017
+ - Modul folgt Modulvorgaben. Kein direktes Beschreiben von STATE.
+
 03.02.2017
  - Modul startet nicht nach Fhem Neustart oder Änderung der Attribute.
  
