@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 72737 2017-04-20 13:15:00Z jowiemann $
+# $Id: 98_DBPlan.pm 73000 2017-05-02 11:06:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
@@ -70,7 +70,7 @@ sub DBPlan_Define($$) {
     my ( $hash, $def ) = @_;
     my @a = split( "[ \t][ \t]*", $def );
 
-    $hash->{version} = '19.04.2017';
+    $hash->{version} = '02.05.2017 11:06:00';
     
     return "DBPlan_Define - too few parameters: define <name> DBPlan <interval> [<time offset>]" if( (@a < 3) || (@a > 4));
 
@@ -728,6 +728,8 @@ sub DBPlan_Parse_Stationtable($)
     my $name = $hash->{NAME};
 
     delete($hash->{error}) if(exists($hash->{error}));
+    my $ret = fhem("deletereading $name table_.*", 1);
+
     
     if ($err) {
        Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Stationtable: got error in callback: $err";
@@ -815,7 +817,13 @@ sub DBPlan_Parse_Stationtable($)
         $table_row .= "|" . $1;
       }
 
-      # Uhrzeit
+      # Uhrzeit ohne Verspätung
+      $pattern = '\<br.\/\>\<span.class="bold"\>(.*?)\<\/span\>\<\/div\>';
+      if ($line =~ m/$pattern/s) {
+        $table_row .= "|" . $1;
+      }
+
+      # Uhrzeit mit Verspätung
       $pattern = '\<br.\/\>\<span.class="bold"\>(.*?)\<\/span\>&nbsp;';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . $1;
