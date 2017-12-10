@@ -1,9 +1,9 @@
-# $Id: 98_DBPlan.pm 73000 2017-05-02 11:06:00Z jowiemann $
+# $Id: 98_DBPlan.pm 73007 2017-10-12 19:06:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
 #
-#     Calls the URL: http://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1
+#     Calls the URL: https://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1
 #     with the given attributes. 
 #     S=departure will be replace with "S=".AttrVal($name, "dbplan_station", undef)
 #     Z=destination will be replace with "S=".AttrVal($name, "dbplan_destination", undef)
@@ -100,8 +100,8 @@ sub DBPlan_Define($$) {
 
     Log3 $name, 3, "DBPlan_Define ($name) - defined with interval $hash->{Interval} (sec)";
 
-    $hash->{PLAN_URL} = AttrVal($name, "dbplan_plan_url", 'http://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1');
-    $hash->{TABLE_URL} = AttrVal($name, "dbplan_table_url", 'http://reiseauskunft.bahn.de/bin/bhftafel.exe/dox?&input=station&start=1&rt=1');
+    $hash->{PLAN_URL} = AttrVal($name, "dbplan_plan_url", 'https://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1');
+    $hash->{TABLE_URL} = AttrVal($name, "dbplan_table_url", 'https://reiseauskunft.bahn.de/bin/bhftafel.exe/dox?&input=station&start=1&rt=1');
     $hash->{BASE_TYPE} = AttrVal($name, "dbplan-base-type", 'plan');
 
     Log3 $name, 3, "DBPlan_Define ($name) - defined with base type $hash->{BASE_TYPE}";
@@ -371,7 +371,7 @@ sub DBPlan_Attr(@) {
         $hash->{PLAN_URL} = $attrVal;
         $attr{$name}{$attrName} = $attrVal;   
       } elsif ($cmd eq "del") {
-        $hash->{PLAN_URL} = 'http://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1';
+        $hash->{PLAN_URL} = 'https://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1';
       }
       Log3 $name, 4, "DBPlan_Attr ($name) - url set to " . $hash->{PLAN_URL};
 
@@ -380,7 +380,7 @@ sub DBPlan_Attr(@) {
         $hash->{TABLE_URL} = $attrVal;
         $attr{$name}{$attrName} = $attrVal;   
       } elsif ($cmd eq "del") {
-        $hash->{TABLE_URL} = 'http://reiseauskunft.bahn.de/bin/bhftafel.exe/dox?&rt=1&input=station';
+        $hash->{TABLE_URL} = 'https://reiseauskunft.bahn.de/bin/bhftafel.exe/dox?&rt=1&input=station';
       }
       Log3 $name, 4, "DBPlan_Attr ($name) - url set to " . $hash->{TABLE_URL};
 
@@ -1591,7 +1591,7 @@ sub DBPlan_loadStationFile($;$)
 # only for testing regular expressions
 sub RegExTest()
 {
-#   my $test = '<h1>Fehler</h1> <div class="haupt bline"> Sehr geehrte Kundin, sehr geehrter Kunde,<br /><br /> Start/Ziel/Via oder &#228;quivalente Bahnh&#246;fe sind mehrfach vorhanden oder identisch. <br />Wir bitten Sie, Ihre Anfrage mit ge&#228;nderten Eingaben zu wiederholen. <br /><span class="bold"><br />Vielen Dank! <br />Ihr Team von www.bahn.de</span><br /> <br />Code: H9380<br /> </div> <div class="bline"> <a href="http://reiseauskunft.bahn.de/bin/detect.exe/dox?" ';
+#   my $test = '<h1>Fehler</h1> <div class="haupt bline"> Sehr geehrte Kundin, sehr geehrter Kunde,<br /><br /> Start/Ziel/Via oder &#228;quivalente Bahnh&#246;fe sind mehrfach vorhanden oder identisch. <br />Wir bitten Sie, Ihre Anfrage mit ge&#228;nderten Eingaben zu wiederholen. <br /><span class="bold"><br />Vielen Dank! <br />Ihr Team von www.bahn.de</span><br /> <br />Code: H9380<br /> </div> <div class="bline"> <a href="https://reiseauskunft.bahn.de/bin/detect.exe/dox?" ';
 
    my $test = ReadingsVal("DB_Test", "Notes_HTML_1", "none");
 
@@ -1616,7 +1616,7 @@ sub RegExTest()
 <h3>DBPlan</h3>
 
 <ul>
-	The module fetches from the info page of the DB <http://reiseauskunft.bin.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1>
+	The module fetches from the info page of the DB <https://reiseauskunft.bin.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1>
        up-to-date information on a specified connection and stores it in Fhem readings.
        The file with the IBNR codes and stations of Deutsche Bahn can be download at http://www.michaeldittrich.de/ibnr.
 
@@ -1800,7 +1800,7 @@ sub RegExTest()
 <h3>DBPlan</h3>
 
 <ul>
-	Das Modul holt von der Infoseite der DB <http://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1>
+	Das Modul holt von der Infoseite der DB <https://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1>
        aktuelle Informationen zu einer angegeben Verbindung und legt sie in Fhem readings ab.
        Die Datei mit den IBNR-Codes und Stationen der Deutschen Bahn kann unter http://www.michaeldittrich.de/ibnr abgerufen werden.
 
