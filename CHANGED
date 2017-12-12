@@ -1,3 +1,7 @@
+12.12.2017
+ - Verspätungen wieder in Minuten (Dank an Hulzer aus dem Fhem Forum)
+ - Inkonsistenz bei inactiv(e) / activ(e). Jetzt durchgängig inactive/activ
+
 10.12.2017
  - Auszuwertendende Seiten auf https umgestellt.
  - kleinere Fehlerkorrektur: bei vorhandenen Travel Notes noch Verspätungsanzeigen
