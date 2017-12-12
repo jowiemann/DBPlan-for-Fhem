@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 73008 2017-10-12 19:25:00Z jowiemann $
+# $Id: 98_DBPlan.pm 74331 2017-12-12 12:44:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
@@ -226,8 +226,8 @@ sub DBPlan_Set($@) {
    $list .= " timeOffset";
    $list .= " rereadStationFile:noArg" if(defined(AttrVal($name, "dbplan-station-file", undef)));
    $list .= " rereadDBInfo:noArg" if($hash->{DevState} ne 'disabled' && $hash->{DevState} ne 'defined');
-   $list .= " inactiv:noArg" if($hash->{DevState} eq 'active' || $hash->{DevState} eq 'initialized');
-   $list .= " activ:noArg" if($hash->{DevState} eq 'inactiv');
+   $list .= " inactive:noArg" if($hash->{DevState} eq 'active' || $hash->{DevState} eq 'initialized');
+   $list .= " active:noArg" if($hash->{DevState} eq 'inactive');
 
    if ($cmd eq 'interval')
    {
@@ -280,22 +280,22 @@ sub DBPlan_Set($@) {
           return "DBPlan_Set - no time offset (min) defined, please use something > 10, defined is $hash->{Time_Offset} (sec)";
       }
    }
-   elsif ($cmd eq 'inactiv')
+   elsif ($cmd eq 'inactive')
    {
-      $hash->{DevState} = 'inactiv';
-      #$hash->{state} = 'inactiv';
-      readingsSingleUpdate($hash, "state", "inactiv", 1);
+      $hash->{DevState} = 'inactive';
+      #$hash->{state} = 'inactive';
+      readingsSingleUpdate($hash, "state", "inactive", 1);
 
       RemoveInternalTimer($hash);    
-      Log3 $name, 3, "DBPlan_Set ($name) - interval timer set to inactiv";
+      Log3 $name, 3, "DBPlan_Set ($name) - interval timer set to inactive";
 
       return undef;
 
    } # if stop
-   elsif ($cmd eq 'activ')
+   elsif ($cmd eq 'active')
    {
       RemoveInternalTimer($hash);
-      InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0) if ($hash->{DevState} eq "inactiv");
+      InternalTimer(gettimeofday()+2, "DBPlan_Get_DB_Info", $hash, 0) if ($hash->{DevState} eq "inactive");
       $hash->{DevState}='initialized';
       #$hash->{state}='initialized';
       readingsSingleUpdate($hash, "state", "initialized", 1);
@@ -477,6 +477,39 @@ sub DBPlan_Attr(@) {
    }
 
    return undef;
+}
+
+############################################
+# Calculate delay difference in minutes
+#
+sub DBPlan_getMinutesDiff
+{
+	my ($start, $end) = @_;
+	
+	my ($hourStart, $minuteStart) = $start =~ m|(\d{2}):(\d{2})|;
+	my ($hourEnd, $minuteEnd) = $end =~ m|(\d{2}):(\d{2})|;
+	
+	# invalid time?
+	return 0 if ($hourStart eq "" || $minuteStart eq "" || $hourEnd eq "" || $minuteEnd eq "");
+	
+	my $totalMinutesStart = ($hourStart * 60) + $minuteStart;	
+	my $totalMinutesEnd = ($hourEnd * 60) + $minuteEnd;
+	
+	my $diff = 0;
+	
+	# midnight?
+	if ($totalMinutesEnd < $totalMinutesStart)
+	{
+		# 24:00 - start
+		$diff = (24 * 60) - $totalMinutesStart;
+		$diff = $diff + $totalMinutesEnd;		
+	}
+	else
+	{
+		$diff = $totalMinutesEnd - $totalMinutesStart;
+	}
+	
+	return $diff;
 }
 
 #####################################
@@ -896,10 +929,10 @@ sub DBPlan_Parse_Stationtable($)
     } else {
       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Stationtable: table plans read successfully";
 
-      if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactiv') {
+      if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactive') {
         $hash->{DevState}='active' ;
         #$hash->{state}='active';
-        readingsSingleUpdate($hash, "state", "activ", 1);
+        readingsSingleUpdate($hash, "state", "active", 1);
       }
 
       readingsBeginUpdate($hash);
@@ -1137,23 +1170,31 @@ sub DBPlan_Parse_Travel_Notes($)
 
     ##################################################################################
     # delays
-    $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.\<span.class=".*?"\>(.*?)\<\/span\>.*?\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
+    $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.\<span.class="delay"\>(\d\d:\d\d)\<\/span\>.-.*?\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
 
     if ($data =~ m/$pattern/s) {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: delays for plan $index read successfully";
-       readingsBulkUpdate( $hash, "plan_departure_delay_$index", $1);
+       my $dTime = $hash->{READINGS}{"plan_departure_$index"}{VAL};
+       my $delay = DBPlan_getMinutesDiff($dTime, $1);
+       readingsBulkUpdate( $hash, "plan_departure_delay_$index", $delay);
+
+       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: departure delay for plan $index read successfully: $index $dTime, $1, $delay";
+
     } else {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: no delays for plan $index found";
+       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: no departure delay for plan $index found";
     }
 
-    $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.\<span.class=".*?"\>(.*?)\<\/span\>.*?\<span.class=".*?"\>(.*?)\<\/span\>.\<\/span\>.\<\/a\>.\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
+    # $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.\<span.class=".*?"\>(.*?)\<\/span\>.*?\<span.class=".*?"\>(.*?)\<\/span\>.\<\/span\>.\<\/a\>.\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
+    $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.-.*?<span.class="delay"\>(\d\d:\d\d)\<\/span\>.\<\/span\>.\<\/a\>.\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
 
     if ($data =~ m/$pattern/s) {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: delays for plan $index read successfully";
-       readingsBulkUpdate( $hash, "plan_departure_delay_$index", $1);
-       readingsBulkUpdate( $hash, "plan_arrival_delay_$index", $1);
+       # readingsBulkUpdate( $hash, "plan_departure_delay_$index", $1);
+       my $dTime = $hash->{READINGS}{"plan_arrival_$index"}{VAL};
+       my $delay = DBPlan_getMinutesDiff($dTime, $1);
+       readingsBulkUpdate( $hash, "plan_arrival_delay_$index", $delay);
+
+       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: arrival delay for plan $index read successfully: $index $dTime, $1, $delay";
     } else {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: no delays for plan $index found";
+       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: no arrival delay for plan $index found";
     }
 
     readingsEndUpdate($hash, 1);
@@ -1297,7 +1338,7 @@ sub DBPlan_Parse_Timetable($)
       }
       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: connection plans read successfully";
 
-      if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactiv') {
+      if($hash->{DevState} eq 'initialized' || $hash->{DevState} eq 'inactive') {
         $hash->{DevState}='active';
         #$hash->{state}='active';
         readingsSingleUpdate($hash, "state", "active", 1);
@@ -1635,7 +1676,7 @@ sub RegExTest()
 	<ul>
 		<li><b>initialized</b></li>
 			the device is defined, but no successfully requests and parsing has been done<br>
-                     this state will also be set when changing from <inactiv> to <activ> and <disabled> to <enabled><br>
+                     this state will also be set when changing from <inactive> to <active> and <disabled> to <enabled><br>
 		<li><b>active</b></li>
 			the device is working<br>
 		<li><b>stopped</b></li>
@@ -1819,7 +1860,7 @@ sub RegExTest()
 	<ul>
 		<li><b>initialized</b></li>
 			Das Device ist definiert, aber es wurde keine erfolgreichen Anfragen und Analysen durchgeführt<br>
-                     Dieser Zustand wird auch beim Wechsel von <inactiv> auf <activ> und <disabled> auf <enabled> gesetzt<br>
+                     Dieser Zustand wird auch beim Wechsel von <inactive> auf <active> und <disabled> auf <enabled> gesetzt<br>
 		<li><b>active</b></li>
 			Das Device arbeitet<br>
 		<li><b>stopped</b></li>
