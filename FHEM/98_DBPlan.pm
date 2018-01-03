@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 74331 2017-12-12 12:44:00Z jowiemann $
+# $Id: 98_DBPlan.pm 74331 2018-01-03 19:10:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm
@@ -625,7 +625,7 @@ sub DBPlan_make_url($) {
     $plan_url .= '&journeyProducts='.$products if($products > 0);
     $plan_url .= '&journeyOptions='.$options if($options > 0);
 
-    my $travel_date = AttrVal($name, "dbplan_travel-date", "");
+    my $travel_date = AttrVal($name, "dbplan_travel_date", "");
     my $travel_time = AttrVal($name, "dbplan_travel_time", "");
     my $time_sel = AttrVal($name, "dbplan_time_selection", "depart");
 
