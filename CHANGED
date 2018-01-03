@@ -1,3 +1,7 @@
+03.01.2018
+- Fehler in Zeile 628 gefixed: dbplan_travel_date anstatt dbplan_travel-date
+  Der Fehler verhindert, dass ein Datum, das im Attribut dbplan_travel_date angegeben wird, an die Bahn API übergeben wird.
+  Damit wirkt es letztlich so, als wäre das Attribut nicht vorhanden/belegt.
 12.12.2017
  - Verspätungen wieder in Minuten (Dank an Hulzer aus dem Fhem Forum)
  - Inkonsistenz bei inactiv(e) / activ(e). Jetzt durchgängig inactive/active
