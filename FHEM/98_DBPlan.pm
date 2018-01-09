@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 75665 2018-01-09 08:30:00Z jowiemann $
+# $Id: 98_DBPlan.pm 75652 2018-01-09 08:40:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm (Testversion)
@@ -793,7 +793,6 @@ sub DBPlan_Parse_Stationtable($)
     }
 
     my $i;
-    my $ret;
     my $defChar = AttrVal($name, "dbplan-default-char", "delete");
 
     my $pattern = '';
