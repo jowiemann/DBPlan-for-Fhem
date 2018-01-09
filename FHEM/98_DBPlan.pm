@@ -1,7 +1,7 @@
-# $Id: 98_DBPlan.pm 74331 2018-01-03 19:10:00Z jowiemann $
+# $Id: 98_DBPlan.pm 75665 2018-01-09 08:30:00Z jowiemann $
 ##############################################################################
 #
-#     98_DBPlan.pm
+#     98_DBPlan.pm (Testversion)
 #
 #     Calls the URL: https://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1
 #     with the given attributes. 
@@ -56,6 +56,7 @@ sub DBPlan_Initialize($) {
         . "dbplan-disable:0,1 "
         . "dbplan-remote-timeout "
         . "dbplan-remote-noshutdown:0,1 "
+        . "dbplan-remote-buf:0,1 "
         . "dbplan-remote-loglevel:0,1,2,3,4,5 "
         . "dbplan-default-char "
         . "dbplan-table-headers "
@@ -485,7 +486,7 @@ sub DBPlan_Attr(@) {
 sub DBPlan_getMinutesDiff
 {
 	my ($start, $end) = @_;
-	
+  
 	my ($hourStart, $minuteStart) = $start =~ m|(\d{2}):(\d{2})|;
 	my ($hourEnd, $minuteEnd) = $end =~ m|(\d{2}):(\d{2})|;
 	
@@ -669,6 +670,7 @@ sub DBPlan_Get_DB_Plain_Text($) {
     $param->{noshutdown} = AttrVal($name, "dbplan-remote-noshutdown", 1);
     $param->{timeout}    = AttrVal($name, "dbplan-remote-timeout", 5);
     $param->{loglevel}   = AttrVal($name, "dbplan-remote-loglevel", 4);
+    $param->{buf}        = AttrVal($name, "dbplan-remote-loglevel", 1);
                      
     Log3 $name, 4, "DBPlan ($name) - Get_DB_Plain_Textget: DB plain text info";             
     
@@ -743,6 +745,7 @@ sub DBPlan_Get_DB_Info($)
     $hash->{noshutdown} = AttrVal($name, "dbplan-remote-noshutdown", 1);
     $hash->{timeout}    = AttrVal($name, "dbplan-remote-timeout", 5);
     $hash->{loglevel}   = AttrVal($name, "dbplan-remote-loglevel", 4);
+    $hash->{buf}        = AttrVal($name, "dbplan-remote-loglevel", 1);
 
     Log3 $name, 4, "DBPlan ($name) - DBPlan_Get_DB_Info: next getting $hash->{url}";
 
@@ -1172,27 +1175,28 @@ sub DBPlan_Parse_Travel_Notes($)
     # delays
     $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.\<span.class="delay"\>(\d\d:\d\d)\<\/span\>.-.*?\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
 
-    if ($data =~ m/$pattern/s) {
+    if (($data =~ m/$pattern/s) && ($hash->{READINGS}{"plan_departure_delay_$index"}{VAL} eq "none")) {
        my $dTime = $hash->{READINGS}{"plan_departure_$index"}{VAL};
-       my $delay = DBPlan_getMinutesDiff($dTime, $1);
-       readingsBulkUpdate( $hash, "plan_departure_delay_$index", $delay);
+       Log3 $name, 4, "DBPlan ($name) - DBPlan_DATA_Delays_1: $dTime to $1";
+       readingsBulkUpdate( $hash, "plan_departure_delay_$index", DBPlan_getMinutesDiff($dTime, $1)) if($dTime =~ m|(\d\d):(\d\d)|);
 
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: departure delay for plan $index read successfully: $index $dTime, $1, $delay";
+       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: departure delay for plan $index read successfully: $index $dTime, $1";
 
     } else {
        Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: no departure delay for plan $index found";
     }
 
     # $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.\<span.class=".*?"\>(.*?)\<\/span\>.*?\<span.class=".*?"\>(.*?)\<\/span\>.\<\/span\>.\<\/a\>.\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
-    $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.-.*?<span.class="delay"\>(\d\d:\d\d)\<\/span\>.\<\/span\>.\<\/a\>.\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
+    $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.-.*?<span.class="delay"\>(\d\d:\d\d)\<\/span\>.\<\/span\>.\<\/a\>.\<\/div\>.*?\<div.class="rline.haupt.routeStart".style="."\>';
 
-    if ($data =~ m/$pattern/s) {
-       # readingsBulkUpdate( $hash, "plan_departure_delay_$index", $1);
+    # Log3 $name, 2, "DBPlan ($name) - DBPlan_DATA_Delays: $data";
+
+    if (($data =~ m/$pattern/s) && ($hash->{READINGS}{"plan_arrival_delay_$index"}{VAL} eq "none")) {
        my $dTime = $hash->{READINGS}{"plan_arrival_$index"}{VAL};
-       my $delay = DBPlan_getMinutesDiff($dTime, $1);
-       readingsBulkUpdate( $hash, "plan_arrival_delay_$index", $delay);
+       Log3 $name, 4, "DBPlan ($name) - DBPlan_DATA_Delays_2: $dTime to $1";
+       readingsBulkUpdate( $hash, "plan_arrival_delay_$index", DBPlan_getMinutesDiff($dTime, $1)) if($dTime =~ m|(\d\d):(\d\d)|);
 
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: arrival delay for plan $index read successfully: $index $dTime, $1, $delay";
+       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: arrival delay for plan $index read successfully: $index $dTime, $1";
     } else {
        Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: no arrival delay for plan $index found";
     }
@@ -1214,6 +1218,7 @@ sub DBPlan_Parse_Travel_Notes($)
     $hash->{noshutdown} = AttrVal($name, "dbplan-remote-noshutdown", 1);
     $hash->{timeout}    = AttrVal($name, "dbplan-remote-timeout", 5);
     $hash->{loglevel}   = AttrVal($name, "dbplan-remote-loglevel", 4);
+    $hash->{buf}        = AttrVal($name, "dbplan-remote-loglevel", 1);
 
     Log3 $name, 4, "DBPlan ($name) - DB notes ($index): next getting $hash->{url}";
 
@@ -1281,8 +1286,8 @@ sub DBPlan_Parse_Timetable($)
          readingsBulkUpdate( $hash, "plan_departure_$i", $defChar);
          readingsBulkUpdate( $hash, "plan_arrival_$i", $defChar);
          readingsBulkUpdate( $hash, "plan_connection_$i", $defChar);
-         readingsBulkUpdate( $hash, "plan_departure_delay_$i", $defChar );
-         readingsBulkUpdate( $hash, "plan_arrival_delay_$i", $defChar );
+         readingsBulkUpdate( $hash, "plan_departure_delay_$i", "+0" );
+         readingsBulkUpdate( $hash, "plan_arrival_delay_$i", "+0" );
          readingsBulkUpdate( $hash, "travel_duration_$i", $defChar);
          readingsBulkUpdate( $hash, "travel_change_$i", $defChar);
          readingsBulkUpdate( $hash, "travel_price_$i", $defChar);
@@ -1429,24 +1434,40 @@ sub DBPlan_Parse_Timetable($)
 
     readingsBeginUpdate($hash);
 
+    my $ai = 0;
+
     for($i=1; $i<=3; $i++) {
 
-       my ($d_time, $a_time, $d_delay, $a_delay, $change, $duration, $prod, $price) = split(";", $planrow[$i]);
+       $ai++;
+       my ($d_time, $a_time, $d_delay, $a_delay, $change, $duration, $prod, $price) = split(";", $planrow[$ai]);
+
+       if(! ($d_time =~ m|(\d\d):(\d\d)|) ) {
+         $ai++;
+         Log3 $name, 4, "DBPlan ($name) - TimetableError: $i -> $ai while: $d_time";
+         ($d_time, $a_time, $d_delay, $a_delay, $change, $duration, $prod, $price) = split(";", $planrow[$ai]);
+         Log3 $name, 4, "DBPlan ($name) - TimetableError: $i -> $ai now: $d_time";
+       }
 
        $change = "" unless(defined($change));
        $duration = "" unless(defined($duration));
        $prod = "" unless(defined($prod));
        $price = "" unless(defined($price));
 
-       Log3 $name, 4, "DBPlan ($name) - Timetable: $d_time - $a_time - $d_delay - $a_delay - $change - $duration - $prod - $price";
+       Log3 $name, 4, "DBPlan ($name) - Timetable $i/$ai: $d_time - $a_time - $d_delay - $a_delay - $change - $duration - $prod - $price";
 
-       readingsBulkUpdate( $hash, "plan_departure_$i", $d_time ) if(trim($d_time) ne "");
-       readingsBulkUpdate( $hash, "plan_arrival_$i", $a_time ) if(trim($a_time) ne "");
+       readingsBulkUpdate( $hash, "plan_departure_$i", $d_time ) if($d_time =~ m|(\d\d):(\d\d)|);
+       readingsBulkUpdate( $hash, "plan_arrival_$i", $a_time ) if($a_time =~ m|(\d\d):(\d\d)|);
 
        readingsBulkUpdate( $hash, "plan_connection_$i", $prod ) if(trim($prod) ne "");
 
-       # readingsBulkUpdate( $hash, "plan_departure_delay_$i", $d_delay ) if(trim($d_delay) ne "");
-       # readingsBulkUpdate( $hash, "plan_arrival_delay_$i", $a_delay ) if(trim($a_delay) ne "");
+       if(($d_time =~ m|(\d\d):(\d\d)|) && ($d_delay =~ m|(\d\d):(\d\d)|)) {
+         my $delay = DBPlan_getMinutesDiff($d_time, $d_delay);
+         readingsBulkUpdate( $hash, "plan_departure_delay_$i", $delay );
+       }
+       if(($a_time =~ m|(\d\d):(\d\d)|) && ($a_delay =~ m|(\d\d):(\d\d)|)) {
+         my $delay = DBPlan_getMinutesDiff($a_time, $a_delay);
+         readingsBulkUpdate( $hash, "plan_arrival_delay_$i", $delay );
+       }
 
        readingsBulkUpdate( $hash, "plan_travel_duration_$i", $duration ) if(trim($duration) ne "");
        readingsBulkUpdate( $hash, "plan_travel_change_$i", $change ) if(trim($change) ne "");
@@ -1490,6 +1511,7 @@ sub DBPlan_Parse_Timetable($)
     $hash->{noshutdown} = AttrVal($name, "dbplan-remote-noshutdown", 1);
     $hash->{timeout}    = AttrVal($name, "dbplan-remote-timeout", 5);
     $hash->{loglevel}   = AttrVal($name, "dbplan-remote-loglevel", 4);
+    $hash->{buf}        = AttrVal($name, "dbplan-remote-loglevel", 1);
 
     Log3 $name, 4, "DBPlan ($name) - DB notes ($hash->{note_index}): next getting $hash->{url}";
 
@@ -1793,6 +1815,7 @@ sub RegExTest()
 		<li><b>dbplan-remote-timeout</b></li>
 		<li><b>dbplan-remote-noshutdown</b></li>
 		<li><b>dbplan-remote-loglevel</b></li>
+		<li><b>dbplan-remote-buf</b></li>
 	</ul>
        <br>
 	<a name="DBPlanReadings"></a>
@@ -1977,6 +2000,7 @@ sub RegExTest()
 		<li><b>dbplan-remote-timeout</b></li>
 		<li><b>dbplan-remote-noshutdown</b></li>
 		<li><b>dbplan-remote-loglevel</b></li>
+		<li><b>dbplan-remote-buf</b></li>
 
 	</ul>
        <br>
