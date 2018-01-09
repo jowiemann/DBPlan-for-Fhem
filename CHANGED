@@ -1,3 +1,7 @@
+09.01.2018
+- Fehler bei Verspätungszeiten korrigiert
+- Readings für Verspätung zeigen wieder +0, wenn keine Verspätung vorliegt
+
 03.01.2018
 - Fehler in Zeile 628 gefixed: dbplan_travel_date anstatt dbplan_travel-date
   Der Fehler verhindert, dass ein Datum, das im Attribut dbplan_travel_date angegeben wird, an die Bahn API übergeben wird.
