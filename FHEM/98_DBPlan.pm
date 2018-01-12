@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 75821 2018-01-12 22:55:00Z jowiemann $
+# $Id: 98_DBPlan.pm 75815 2018-01-12 23:05:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm (Testversion)
@@ -1174,7 +1174,7 @@ sub DBPlan_Parse_Travel_Notes($)
     # delays
     $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.\<span.class="delay"\>(\d\d:\d\d)\<\/span\>.-.*?\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
 
-    if (($data =~ m/$pattern/s) && ($hash->{READINGS}{"plan_departure_delay_$index"}{VAL} eq "+0")) {
+    if (($data =~ m/$pattern/s) && ($hash->{READINGS}{"plan_departure_delay_$index"}{VAL} eq "0")) {
        my $dTime = $hash->{READINGS}{"plan_departure_$index"}{VAL};
        Log3 $name, 4, "DBPlan ($name) - DBPlan_DATA_Delays_1: $dTime to $1";
        readingsBulkUpdate( $hash, "plan_departure_delay_$index", DBPlan_getMinutesDiff($dTime, $1)) if($dTime =~ m|(\d\d):(\d\d)|);
@@ -1190,7 +1190,7 @@ sub DBPlan_Parse_Travel_Notes($)
 
     # Log3 $name, 2, "DBPlan ($name) - DBPlan_DATA_Delays: $data";
 
-    if (($data =~ m/$pattern/s) && ($hash->{READINGS}{"plan_arrival_delay_$index"}{VAL} eq "+0")) {
+    if (($data =~ m/$pattern/s) && ($hash->{READINGS}{"plan_arrival_delay_$index"}{VAL} eq "0")) {
        my $dTime = $hash->{READINGS}{"plan_arrival_$index"}{VAL};
        Log3 $name, 4, "DBPlan ($name) - DBPlan_DATA_Delays_2: $dTime to $1";
        readingsBulkUpdate( $hash, "plan_arrival_delay_$index", DBPlan_getMinutesDiff($dTime, $1)) if($dTime =~ m|(\d\d):(\d\d)|);
@@ -1285,8 +1285,8 @@ sub DBPlan_Parse_Timetable($)
          readingsBulkUpdate( $hash, "plan_departure_$i", $defChar);
          readingsBulkUpdate( $hash, "plan_arrival_$i", $defChar);
          readingsBulkUpdate( $hash, "plan_connection_$i", $defChar);
-         readingsBulkUpdate( $hash, "plan_departure_delay_$i", "+0" );
-         readingsBulkUpdate( $hash, "plan_arrival_delay_$i", "+0" );
+         readingsBulkUpdate( $hash, "plan_departure_delay_$i", "0" );
+         readingsBulkUpdate( $hash, "plan_arrival_delay_$i", "0" );
          readingsBulkUpdate( $hash, "travel_duration_$i", $defChar);
          readingsBulkUpdate( $hash, "travel_change_$i", $defChar);
          readingsBulkUpdate( $hash, "travel_price_$i", $defChar);
@@ -1463,14 +1463,14 @@ sub DBPlan_Parse_Timetable($)
          my $delay = DBPlan_getMinutesDiff($d_time, $d_delay);
          readingsBulkUpdate( $hash, "plan_departure_delay_$i", $delay );
        } else {
-         readingsBulkUpdate( $hash, "plan_departure_delay_$i", "+0" );
+         readingsBulkUpdate( $hash, "plan_departure_delay_$i", "0" );
        }
 
        if(($a_time =~ m|(\d\d):(\d\d)|) && ($a_delay =~ m|(\d\d):(\d\d)|)) {
          my $delay = DBPlan_getMinutesDiff($a_time, $a_delay);
          readingsBulkUpdate( $hash, "plan_arrival_delay_$i", $delay );
        } else {
-         readingsBulkUpdate( $hash, "plan_arrival_delay_$i", "+0" );
+         readingsBulkUpdate( $hash, "plan_arrival_delay_$i", "0" );
        }
 
        readingsBulkUpdate( $hash, "plan_travel_duration_$i", $duration ) if(trim($duration) ne "");
