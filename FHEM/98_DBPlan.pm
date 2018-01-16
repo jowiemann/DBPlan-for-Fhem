@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 75815 2018-01-12 23:05:00Z jowiemann $
+# $Id: 98_DBPlan.pm 76055 2018-01-15 19:56:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm (Testversion)
@@ -71,7 +71,7 @@ sub DBPlan_Define($$) {
     my ( $hash, $def ) = @_;
     my @a = split( "[ \t][ \t]*", $def );
 
-    $hash->{version} = '02.05.2017 11:06:00';
+    $hash->{version} = '15.01.2018 19:56:00';
     
     return "DBPlan_Define - too few parameters: define <name> DBPlan <interval> [<time offset>]" if( (@a < 3) || (@a > 4));
 
@@ -1422,6 +1422,8 @@ sub DBPlan_Parse_Timetable($)
       }
     }
 
+    Log3 $name, 2, "DBPlan ($name) - Read Timetablelines: $i";
+
     unless(@planrow) {
       Log3 $name, 2, "DBPlan ($name) - Timetable: HTML::TableExtract failed.";
       readingsBeginUpdate($hash);
@@ -1437,15 +1439,19 @@ sub DBPlan_Parse_Timetable($)
 
     for($i=1; $i<=3; $i++) {
 
-       $ai++;
+       Log3 $name, 4, "DBPlan ($name) - Read Timetableposition: $ai for counter:$i";
+       Log3 $name, 4, "DBPlan ($name) - Show Timetableposition [$ai]:$planrow[$ai]";
+
        my ($d_time, $a_time, $d_delay, $a_delay, $change, $duration, $prod, $price) = split(";", $planrow[$ai]);
 
        if(! ($d_time =~ m|(\d\d):(\d\d)|) ) {
          $ai++;
          Log3 $name, 4, "DBPlan ($name) - TimetableError: $i -> $ai while: $d_time";
          ($d_time, $a_time, $d_delay, $a_delay, $change, $duration, $prod, $price) = split(";", $planrow[$ai]);
-         Log3 $name, 4, "DBPlan ($name) - TimetableError: $i -> $ai now: $d_time";
+         Log3 $name, 4, "DBPlan ($name) - Show Timetableposition [$ai]:$planrow[$ai]";
        }
+
+       $ai++;
 
        $change = "" unless(defined($change));
        $duration = "" unless(defined($duration));
