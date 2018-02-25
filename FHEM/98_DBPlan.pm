@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 76055 2018-01-15 19:56:00Z jowiemann $
+# $Id: 98_DBPlan.pm 80662 2018-02-23 18:53:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm (Testversion)
@@ -63,6 +63,9 @@ sub DBPlan_Initialize($) {
         . "dbplan-station-file "
         . "dbplan-base-type:plan,table "
         . "dbplan-special-char-decode:none,utf8,latin1(default) "
+        . "dbplan-reading-deselect:multiple-strict,plan_departure,plan_arrival,plan_connection,plan_departure_delay,plan_arrival_delay,"
+        . "plan_travel_change,plan_travel_duration,travel_note,travel_note_text,travel_note_error,"
+        . "travel_departure,travel_destination,travel_price "
         . $readingFnAttributes;
 }
 
@@ -71,7 +74,7 @@ sub DBPlan_Define($$) {
     my ( $hash, $def ) = @_;
     my @a = split( "[ \t][ \t]*", $def );
 
-    $hash->{version} = '15.01.2018 19:56:00';
+    $hash->{version} = '23.02.2018 18:23:00';
     
     return "DBPlan_Define - too few parameters: define <name> DBPlan <interval> [<time offset>]" if( (@a < 3) || (@a > 4));
 
@@ -251,10 +254,10 @@ sub DBPlan_Set($@) {
          return undef;
 
       } elsif (int @val == 1 && $val[0] <= 10) {
-          Log3 $name, 4, "DBPlan_Set ($name) - interval: $val[0] (sec) to small, continuing with $hash->{Interval} (sec)";
+          Log3 $name, 3, "DBPlan_Set ($name) - interval: $val[0] (sec) to small, continuing with $hash->{Interval} (sec)";
           return "DBPlan_Set - interval too small, please use something > 10, defined is $hash->{Interval} (sec)";
       } else {
-          Log3 $name, 4, "DBPlan_Set ($name) - interval: no interval (sec) defined, continuing with $hash->{Interval} (sec)";
+          Log3 $name, 3, "DBPlan_Set ($name) - interval: no interval (sec) defined, continuing with $hash->{Interval} (sec)";
           return "DBPlan_Set - no interval (sec) defined, please use something > 10, defined is $hash->{Interval} (sec)";
       }
    } # if interval
@@ -274,10 +277,10 @@ sub DBPlan_Set($@) {
          return undef;
 
       } elsif (int @val == 1 && $val[0] < 0) {
-          Log3 $name, 4, "DBPlan_Set ($name) - Time_Offset: $val[0] (min) to small, continuing with $hash->{Time_Offset} (min)";
+          Log3 $name, 3, "DBPlan_Set ($name) - Time_Offset: $val[0] (min) to small, continuing with $hash->{Time_Offset} (min)";
           return "DBPlan_Set - time offset too small, please use something > 10, defined is $hash->{Time_Offset} (sec)";
       } else {
-          Log3 $name, 4, "DBPlan_Set ($name) - Time_Offset: no time offset (min) defined, continuing with $hash->{Time_Offset} (min)";
+          Log3 $name, 3, "DBPlan_Set ($name) - Time_Offset: no time offset (min) defined, continuing with $hash->{Time_Offset} (min)";
           return "DBPlan_Set - no time offset (min) defined, please use something > 10, defined is $hash->{Time_Offset} (sec)";
       }
    }
@@ -320,6 +323,8 @@ sub DBPlan_Attr(@) {
    my ($cmd,$name,$attrName,$attrVal) = @_;
    my $hash = $defs{$name};
 
+   $attrVal = "not defined" unless(defined($attrVal));
+
    # $cmd can be "del" or "set"
    # $name is device name
    # attrName and attrVal are Attribute name and value
@@ -327,13 +332,13 @@ sub DBPlan_Attr(@) {
    if ($cmd eq "set") {
      if ($attrName eq "dbplan-travel-date") {
        if (!($attrVal =~ m/(0[1-9]|1[0-9]|2[0-9]|3[01]).(0[1-9]|1[012]).\d\d/s ) ) {
-          Log3 $name, 4, "DBPlan_Attr ($name) - $attrVal is a wrong date";
+          Log3 $name, 3, "DBPlan_Attr ($name) - $attrVal is a wrong date";
           return ("DBPlan_Attr: $attrVal is a wrong date. Format is dd.mm.yy");
        }
 
      } elsif ($attrName eq "dbplan-travel-time") {
        if (!($attrVal =~ m/(?:0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/s)) {
-          Log3 $name, 4, "DBPlan_Attr ($name) - $attrVal is a wrong time";
+          Log3 $name, 3, "DBPlan_Attr ($name) - $attrVal is a wrong time";
           return ("DBPlan_Attr: $attrVal is a wrong time. Format is hh:mm");
        }
      }
@@ -348,13 +353,13 @@ sub DBPlan_Attr(@) {
             $hash->{DevState}='initialized';
             #$hash->{state}='initialized';
             readingsSingleUpdate($hash, "state", "initialized", 1);
-            Log3 $name, 4, "DBPlan_Attr ($name) - interval timer enabled with interval $hash->{Interval} (sec)";
+            Log3 $name, 3, "DBPlan_Attr ($name) - interval timer enabled with interval $hash->{Interval} (sec)";
          } else {
             $hash->{DevState} = 'disabled';
             #$hash->{state} = 'disabled';
             readingsSingleUpdate($hash, "state", "disabled", 1);
             RemoveInternalTimer($hash);    
-            Log3 $name, 4, "DBPlan_Attr ($name) - interval timer disabled";
+            Log3 $name, 3, "DBPlan_Attr ($name) - interval timer disabled";
          }
          $attr{$name}{$attrName} = $attrVal;   
 
@@ -364,7 +369,7 @@ sub DBPlan_Attr(@) {
          $hash->{DevState}='initialized';
          #$hash->{state}='initialized';
          readingsSingleUpdate($hash, "state", "initialized", 1);
-         Log3 $name, 4, "DBPlan_Attr ($name) - interval timer enabled with interval $hash->{Interval} (sec)";
+         Log3 $name, 3, "DBPlan_Attr ($name) - interval timer enabled with interval $hash->{Interval} (sec)";
       }
 
    } elsif ($attrName eq "dbplan_plan_url") {
@@ -374,7 +379,7 @@ sub DBPlan_Attr(@) {
       } elsif ($cmd eq "del") {
         $hash->{PLAN_URL} = 'https://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1';
       }
-      Log3 $name, 4, "DBPlan_Attr ($name) - url set to " . $hash->{PLAN_URL};
+      Log3 $name, 3, "DBPlan_Attr ($name) - url set to " . $hash->{PLAN_URL};
 
    } elsif ($attrName eq "dbplan_table_url") {
       if($cmd eq "set") {
@@ -383,7 +388,7 @@ sub DBPlan_Attr(@) {
       } elsif ($cmd eq "del") {
         $hash->{TABLE_URL} = 'https://reiseauskunft.bahn.de/bin/bhftafel.exe/dox?&rt=1&input=station';
       }
-      Log3 $name, 4, "DBPlan_Attr ($name) - url set to " . $hash->{TABLE_URL};
+      Log3 $name, 3, "DBPlan_Attr ($name) - url set to " . $hash->{TABLE_URL};
 
    } elsif ($attrName eq "dbplan_station") {
       if($cmd eq "set") {
@@ -466,14 +471,14 @@ sub DBPlan_Attr(@) {
       $ret = fhem("deletereading $name table.*", 1);
       $ret = fhem("deletereading $name plan.*", 1);
       $ret = fhem("deletereading $name travel.*", 1);
-      Log3 $name, 4, "DBPlan_Attr ($name) - base type set to " . $hash->{BASE_TYPE};
+      Log3 $name, 3, "DBPlan_Attr ($name) - base type set to " . $hash->{BASE_TYPE};
 
    } else {
       if($cmd eq "set") {
           $attr{$name}{$attrName} = $attrVal;   
-          Log3 $name, 4, "DBPlan_Attr ($name) - set $attrName : $attrVal";
+          Log3 $name, 3, "DBPlan_Attr ($name) - set $attrName : $attrVal";
       } elsif ($cmd eq "del") {
-          Log3 $name, 4, "DBPlan_Attr ($name) - deleted $attrName : $attrVal";
+          Log3 $name, 3, "DBPlan_Attr ($name) - deleted $attrName : $attrVal";
       }
    }
 
@@ -952,17 +957,47 @@ sub DBPlan_Parse_Travel_Notes($)
 {
     my ($hash, $err, $data) = @_;
     my $name = $hash->{NAME};
-    my $index = $hash->{note_index};
+    my $index = $hash->{helper}{note_index};
+    my $h_name = "delay_" . $index;
+    my ($d_dly, $a_dly) = split(",", $hash->{helper}{$h_name});
+    my $error = 0;
 	
     if ($err) {
-        Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: got error in callback: $err";
-        return;
+        Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): got error in callback: $err";
+        $error = 1;
     }
 
     if($data eq "")
     {
-        Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: received http without any data after requesting DB travel notes";
+        Log3 $name, 3, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): received http without any data after requesting DB travel notes";
+        $error = 2;
+    }
+
+    if($error) {
+      ##################################################################################
+      # Recursiv call until index = 0
+      $index -= 1;
+	
+      if($index <= 0) {
+        Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): parsed all notes";
         return;
+      }
+
+      my $note_text = "travel_note_link_$index";
+ 
+      $hash->{url}                = $hash->{helper}{$note_text};
+      $hash->{helper}{note_index} = $index;
+      $hash->{callback}           = \&DBPlan_Parse_Travel_Notes;
+      $hash->{noshutdown}         = AttrVal($name, "dbplan-remote-noshutdown", 1);
+      $hash->{timeout}            = AttrVal($name, "dbplan-remote-timeout", 5);
+      $hash->{loglevel}           = AttrVal($name, "dbplan-remote-loglevel", 4);
+      $hash->{buf}                = AttrVal($name, "dbplan-remote-loglevel", 1);
+
+      Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): next getting $hash->{url}";
+
+      HttpUtils_NonblockingGet($hash);
+
+      return;
     }
 
     # $data = `cat /opt/fhem/FHEM/test.html`;    # note backticks, qw"cat ..." also works
@@ -988,9 +1023,12 @@ sub DBPlan_Parse_Travel_Notes($)
     # "dbplan-special-char-decode:none,utf8,latin1(default) "
     my $convChar = AttrVal($name, "dbplan-special-char-decode", "latin1(default)");
 
+    my $defChar = AttrVal($name, "dbplan-default-char", "none");
+    my @readings_list = split("(,|\\|)", AttrVal($name, "dbplan-reading-deselect", "none"));
+
     readingsBeginUpdate($hash);
 
-    Log3 $name, 5, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: Callback called: Hash: $hash, data: $data\r\n";
+    Log3 $name, 5, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): Callback called: Hash: $hash, data: $data\r\n";
 
     ##################################################################################
     # only for debugging
@@ -1000,53 +1038,53 @@ sub DBPlan_Parse_Travel_Notes($)
 
     ##################################################################################
     # Parsing error information
-    $pattern = '\<div.class="errormsg"\>..(.*?)\<\/div\>';
+    if(!(grep { /^(travel_note_error)$/ } @readings_list)) {
+      $pattern = '\<div.class="errormsg"\>..(.*?)\<\/div\>';
 
-    if ($data =~ m/$pattern/s) {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Error: travel error information for plan $index read successfully";
-       readingsBulkUpdate( $hash, "travel_note_error_$index", "Fahrt faellt aus");
-    } else {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Error: no error information for plan $index found";
+      if ($data =~ m/$pattern/s) {
+         my $notification = $1;
+         if($convChar eq "latin1(default)"){
+           $notification = DBPlan_html2uml($notification);
+         }
+         if($convChar eq "utf8"){
+           $notification = DBPlan_decode(DBPlan_html2uml($notification));
+         }
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel error information for plan $index read successfully";
+         readingsBulkUpdate( $hash, "travel_note_error_$index", $notification);
+      } else {
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no error information for plan $index found";
+         readingsBulkUpdate( $hash, "travel_note_error_$index", $defChar) if($defChar ne "delete");
+      }
     }
 
     ##################################################################################
     # Parsing notification
-    $pattern = '\<\/script\>.\<div.class="red.bold.haupt".\>(.*?)\<br.\/\>.\<\/div\>';
+    if(!(grep { /^(travel_note_text)$/ } @readings_list)) {
+      $pattern = '\<\/script\>.\<div.class="red.bold.haupt".\>(.*?)\<br.\/\>.\<\/div\>';
+      my $pattern2 = '(Fahrt f&#228;llt aus)';
+      my $pattern3 = '(Aktuelle Informationen zu der Verbindung)';
 
-    if ($data =~ m/$pattern/s) {
-       my $notification = $1;
-       if($convChar eq "latin1(default)"){
-         $notification = DBPlan_html2uml($notification);
-       }
-       if($convChar eq "utf8"){
-         $notification = DBPlan_decode(DBPlan_html2uml($notification));
-       }
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel notification for plan $index read successfully";
-       readingsBulkUpdate( $hash, "travel_note_text_$index", $notification)
-    } else {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: no canceling for plan $index found";
-    }
 
-    ##################################################################################
-    # Parsing notification
-    $pattern = '(Fahrt f&#228;llt aus)';
-
-    if ($data =~ m/$pattern/s) {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel notification for plan $index read successfully";
-       readingsBulkUpdate( $hash, "travel_note_text_$index", "Fahrt faellt aus");
-    } else {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: no canceling for plan $index found";
-    }
-
-    ##################################################################################
-    # Parsing notification
-    $pattern = '(Aktuelle Informationen zu der Verbindung)';
-
-    if ($data =~ m/$pattern/s) {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel notification for plan $index read successfully";
-       readingsBulkUpdate( $hash, "travel_note_text_$index", "Aktuelle Informationen liegen vor");
-    } else {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: no actual informations for plan $index found";
+      if ($data =~ m/$pattern/s) {
+         my $notification = $1;
+         if($convChar eq "latin1(default)"){
+           $notification = DBPlan_html2uml($notification);
+         }
+         if($convChar eq "utf8"){
+           $notification = DBPlan_decode(DBPlan_html2uml($notification));
+         }
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel notification for plan $index read successfully";
+         readingsBulkUpdate( $hash, "travel_note_text_$index", $notification);
+      } elsif ($data =~ m/$pattern2/s) {
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel notification for plan $index read successfully";
+         readingsBulkUpdate( $hash, "travel_note_text_$index", "Fahrt faellt aus");
+      } elsif ($data =~ m/$pattern3/s) {
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel notification for plan $index read successfully";
+         readingsBulkUpdate( $hash, "travel_note_text_$index", "Aktuelle Informationen liegen vor");
+      } else {
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no actual informations for plan $index found";
+         readingsBulkUpdate( $hash, "travel_note_text_$index", $defChar) if($defChar ne "delete");
+      }
     }
 
     ##################################################################################
@@ -1054,10 +1092,10 @@ sub DBPlan_Parse_Travel_Notes($)
     #$pattern = 'alt="".\/\>Angebot.w\&\#228\;hlen.*?\>(.*?)\<\/div\>.\<div.class="querysummary1.clickarea"';
 
     #if ($data =~ m/$pattern/s) {
-    #   Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel notification for plan $index read successfully";
+    #   Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel notification for plan $index read successfully";
     #   readingsBulkUpdate( $hash, "travel_note_text_$index", DBPlan_html2txt($1));
     #} else {
-    #   Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: no travel notes for plan $index found";
+    #   Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel notes for plan $index found";
     #}
 
     ##################################################################################
@@ -1065,139 +1103,157 @@ sub DBPlan_Parse_Travel_Notes($)
     #$pattern = 'alt="".\/\>Angebot.w\&\#228\;hlen(.*?)\<\/div\>.\<div class="clickarea';
 
     #if ($data =~ m/$pattern/s) {
-    #   Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel notification for plan $index read successfully";
+    #   Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel notification for plan $index read successfully";
     #   readingsBulkUpdate( $hash, "travel_note_text_$index", DBPlan_html2txt($1));
     #} else {
-    #   Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: no travel notes for plan $index found";
+    #   Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel notes for plan $index found";
     #}
 
     my $plattform = "";
 
     ##################################################################################
-    # Parsing deaparture plattform
-    $pattern = '\<\/span\>.(Gl.*?).\<br.\/\>.\<\/div\>.\<div.class="rline.haupt.mot"\>';
+    # Parsing departure plattform
+    if(!(grep { /^(travel_departure)$/ } @readings_list)) {
+      $pattern = '\<\/span\>.(Gl.*?).\<br.\/\>.\<\/div\>.\<div.class="rline.haupt.mot"\>';
 
-    $plattform = 'none';
-    if ($data =~ m/$pattern/s) {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel departure plattform for plan $index read successfully";
-       $plattform = $1;
-       if($convChar eq "latin1(default)"){
-         $plattform = DBPlan_html2uml($plattform);
-       }
-       if($convChar eq "utf8"){
-         $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
-       }
-    } else {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: no travel departure plattform for plan $index found";
-       readingsBulkUpdate( $hash, "travel_departure_$index", $plattform);
-    }
+      $plattform = 'none';
+      if ($data =~ m/$pattern/s) {
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel departure plattform for plan $index read successfully";
+         $plattform = $1;
+         if($convChar eq "latin1(default)"){
+           $plattform = DBPlan_html2uml($plattform);
+         }
+         if($convChar eq "utf8"){
+           $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
+         }
+      } else {
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel departure plattform for plan $index found";
+      }
 
-    # and then parsing departure place
-    $pattern = '"rline.haupt.routeStart".style="."\>.\<span.class="bold"\>(.*?)\<\/span\>';
+      # and then parsing departure place
+      $pattern = '"rline.haupt.routeStart".style="."\>.\<span.class="bold"\>(.*?)\<\/span\>';
 
-    if ($data =~ m/$pattern/s) {
-       $plattform = $1.' - '.$plattform;
-       if($convChar eq "latin1(default)"){
-         $plattform = DBPlan_html2uml($plattform);
-       }
-       if($convChar eq "utf8"){
-         $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
-       }
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel departure for plan $index read successfully";
-       readingsBulkUpdate( $hash, "travel_departure_$index", $plattform);
-    }
+      if ($data =~ m/$pattern/s) {
+         $plattform = $1.' - '.$plattform;
+         if($convChar eq "latin1(default)"){
+           $plattform = DBPlan_html2uml($plattform);
+         }
+         if($convChar eq "utf8"){
+           $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
+         }
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel departure for plan $index read successfully";
+         readingsBulkUpdate( $hash, "travel_departure_$index", $plattform);
+      }
 
-    if( $plattform eq "none") {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: no travel departure for plan $index found";
+      if( $plattform eq "none") {
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel departure for plan $index found";
+         readingsBulkUpdate( $hash, "travel_departure_$index", $defChar) if($defChar ne "delete");
+      }
     }
 
     ##################################################################################
     # vehicle number(s)
-    $pattern = '\<div.class="rline.haupt.mot"\>.\<div.class="motSection"\>.*?\<span.class="bold"\>.(.*?).\<\/span\>.\<\/a\>.\<\/div\>.\<\/div\>.\<div.class="rline.haupt.route.*?"\>';
+    if(!(grep { /^(travel_vehicle_nr)$/ } @readings_list)) {
+      $pattern = '\<div.class="rline.haupt.mot"\>.\<div.class="motSection"\>.*?\<span.class="bold"\>.(.*?).\<\/span\>.\<\/a\>.\<\/div\>.\<\/div\>.\<div.class="rline.haupt.route.*?"\>';
 
-    $plattform = 'none';
-    if ($data =~ m/$pattern/s) {
-       $plattform = '';
-       foreach my $vehicle ($data =~ m/$pattern/gs) {
-          $vehicle =~ s/\r|\n//g;
-          $vehicle =~ s/&nbsp.*//gs;
-          $vehicle =~ s/\<span.class="red.*//gs;
-          $vehicle =~ s/\s+/ /g;
-          $plattform .= $vehicle . " | ";
-       }
-       $plattform = substr($plattform, 0, -3);
-       readingsBulkUpdate( $hash, "travel_vehicle_nr_$index", $plattform);
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Vehicle_Nr: vehicle numbers for plan $index read successfully";
-    } else {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Vehicle_Nr: no vehicle numbers for plan $index found";
+      $plattform = 'none';
+      if ($data =~ m/$pattern/s) {
+         $plattform = '';
+         foreach my $vehicle ($data =~ m/$pattern/gs) {
+            $vehicle =~ s/\r|\n//g;
+            $vehicle =~ s/&nbsp.*//gs;
+            $vehicle =~ s/\<span.class="red.*//gs;
+            $vehicle =~ s/\s+/ /g;
+            $plattform .= $vehicle . " | ";
+         }
+         $plattform = substr($plattform, 0, -3);
+         readingsBulkUpdate( $hash, "travel_vehicle_nr_$index", $plattform);
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): vehicle numbers for plan $index read successfully";
+      } else {
+         readingsBulkUpdate( $hash, "travel_vehicle_nr_$index", $defChar) if($defChar ne "delete");
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no vehicle numbers for plan $index found";
+      }
     }
 
     ##################################################################################
     # Parsing destination plattform
-    $pattern = '\<div.class="rline.haupt.routeEnd.routeEnd__IV"\>.*?(Gl.*?).\<br.\/\>.\<span.class="bold"\>.*?\<\/span\>';
+    if(!(grep { /^(travel_destination)$/ } @readings_list)) {
+      $pattern = '\<div.class="rline.haupt.routeEnd.routeEnd__IV"\>.*?(Gl.*?).\<br.\/\>.\<span.class="bold"\>.*?\<\/span\>';
 
-    $plattform = 'none';
-    if ($data =~ m/$pattern/s) {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel destination plattform for plan $index read successfully";
-       $plattform = $1;
-       if($convChar eq "latin1(default)"){
-         $plattform = DBPlan_html2uml($plattform);
-       }
-       if($convChar eq "utf8"){
-         $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
-       }
-       readingsBulkUpdate( $hash, "travel_destination_$index", $plattform);
-    } else {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: no travel destination plattform for plan $index found";
-    }
+      $plattform = 'none';
+      if ($data =~ m/$pattern/s) {
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel destination plattform for plan $index read successfully";
+         $plattform = $1;
+         if($convChar eq "latin1(default)"){
+           $plattform = DBPlan_html2uml($plattform);
+         }
+         if($convChar eq "utf8"){
+           $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
+         }
+         readingsBulkUpdate( $hash, "travel_destination_$index", $plattform);
+      } else {
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel destination plattform for plan $index found";
+      }
 
-    # and then parsing destination place
-    $pattern = '\<div.class="rline.haupt.routeEnd.routeEnd__IV"\>.*?\<br.\/\>.\<span.class="bold"\>(.*?)\<\/span\>';
+      # and then parsing destination place
+      $pattern = '\<div.class="rline.haupt.routeEnd.routeEnd__IV"\>.*?\<br.\/\>.\<span.class="bold"\>(.*?)\<\/span\>';
 
-    if ($data =~ m/$pattern/s) {
-       $plattform = $1.' - '.$plattform;
-       if($convChar eq "latin1(default)"){
-         $plattform = DBPlan_html2uml($plattform);
-       }
-       if($convChar eq "utf8"){
-         $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
-       }
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: travel destination for plan $index read successfully";
-       readingsBulkUpdate( $hash, "travel_destination_$index", $plattform);
-    } 
+      if ($data =~ m/$pattern/s) {
+         $plattform = $1.' - '.$plattform;
+         if($convChar eq "latin1(default)"){
+           $plattform = DBPlan_html2uml($plattform);
+         }
+         if($convChar eq "utf8"){
+           $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
+         }
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel destination for plan $index read successfully";
+         readingsBulkUpdate( $hash, "travel_destination_$index", $plattform);
+      } 
 
-    if ($plattform eq 'none') {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: no travel destination for plan $index found";
+      if ($plattform eq 'none') {
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel destination for plan $index found";
+         readingsBulkUpdate( $hash, "travel_destination_$index", $defChar) if($defChar ne "delete");
+      }
     }
 
     ##################################################################################
     # delays
-    $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.\<span.class="delay"\>(\d\d:\d\d)\<\/span\>.-.*?\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
 
-    if (($data =~ m/$pattern/s) && ($hash->{READINGS}{"plan_departure_delay_$index"}{VAL} eq "0")) {
-       my $dTime = $hash->{READINGS}{"plan_departure_$index"}{VAL};
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_DATA_Delays_1: $dTime to $1";
-       readingsBulkUpdate( $hash, "plan_departure_delay_$index", DBPlan_getMinutesDiff($dTime, $1)) if($dTime =~ m|(\d\d):(\d\d)|);
+    Log3 $name, 5, "DBPlan ($name) - departure $index: " . $d_dly;
+    Log3 $name, 5, "DBPlan ($name) - arrival $index: " . $a_dly;
 
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: departure delay for plan $index read successfully: $index $dTime, $1";
+    if (!$d_dly) {
+       $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.\<span.class="delay"\>(\d\d:\d\d)\<\/span\>.-.*?\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
 
-    } else {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: no departure delay for plan $index found";
+       if (($data =~ m/$pattern/s) && ($hash->{READINGS}{"plan_departure_delay_$index"}{VAL} eq "0")) {
+          my $dTime = $hash->{READINGS}{"plan_departure_$index"}{VAL};
+          Log3 $name, 4, "DBPlan ($name) - DBPlan_DATA_Delays_1: $dTime to $1";
+          readingsBulkUpdate( $hash, "plan_departure_delay_$index", ($dTime =~ m|(\d\d):(\d\d)|)?DBPlan_getMinutesDiff($dTime, $1):"0");
+
+          Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): departure delay for plan $index read successfully: $index $dTime, $1";
+
+       } else {
+          readingsBulkUpdate( $hash, "plan_departure_delay_$index", "0") if($defChar ne "delete");
+          Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no departure delay for plan $index found";
+       }
     }
 
-    # $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.\<span.class=".*?"\>(.*?)\<\/span\>.*?\<span.class=".*?"\>(.*?)\<\/span\>.\<\/span\>.\<\/a\>.\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
-    $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.-.*?<span.class="delay"\>(\d\d:\d\d)\<\/span\>.\<\/span\>.\<\/a\>.\<\/div\>.*?\<div.class="rline.haupt.routeStart".style="."\>';
+    if (!$a_dly) {
+       # $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.\<span.class=".*?"\>(.*?)\<\/span\>.*?\<span.class=".*?"\>(.*?)\<\/span\>.\<\/span\>.\<\/a\>.\<\/div\>.\<div.class="rline.haupt.routeStart".style="."\>';
+       $pattern = '\<\/span\>.\<span.class="querysummary2".id="dtlOpen_2"\>.*?.-.*?<span.class="delay"\>(\d\d:\d\d)\<\/span\>.\<\/span\>.\<\/a\>.\<\/div\>.*?\<div.class="rline.haupt.routeStart".style="."\>';
 
-    # Log3 $name, 2, "DBPlan ($name) - DBPlan_DATA_Delays: $data";
+       # Log3 $name, 2, "DBPlan ($name) - DBPlan_DATA_Delays: $data";
 
-    if (($data =~ m/$pattern/s) && ($hash->{READINGS}{"plan_arrival_delay_$index"}{VAL} eq "0")) {
-       my $dTime = $hash->{READINGS}{"plan_arrival_$index"}{VAL};
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_DATA_Delays_2: $dTime to $1";
-       readingsBulkUpdate( $hash, "plan_arrival_delay_$index", DBPlan_getMinutesDiff($dTime, $1)) if($dTime =~ m|(\d\d):(\d\d)|);
+       if (($data =~ m/$pattern/s) && ($hash->{READINGS}{"plan_arrival_delay_$index"}{VAL} eq "0")) {
+          my $dTime = $hash->{READINGS}{"plan_arrival_$index"}{VAL};
+          Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes: $dTime to $1";
+          readingsBulkUpdate( $hash, "plan_arrival_delay_$index", ($dTime =~ m|(\d\d):(\d\d)|)?DBPlan_getMinutesDiff($dTime, $1):"0");
 
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: arrival delay for plan $index read successfully: $index $dTime, $1";
-    } else {
-       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Delays: no arrival delay for plan $index found";
+          Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): arrival delay for plan $index read successfully: $index $dTime, $1";
+       } else {
+          readingsBulkUpdate( $hash, "plan_arrival_delay_$index", "0") if($defChar ne "delete");
+          Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no arrival delay for plan $index found";
+       }
     }
 
     readingsEndUpdate($hash, 1);
@@ -1206,20 +1262,22 @@ sub DBPlan_Parse_Travel_Notes($)
     # Recursiv call until index = 0
     $index -= 1;
 	
+    my $note_text = "travel_note_link_$index";
+
     if($index <= 0) {
-       Log3 $name, 4, "DBPlan ($name) - DB notes: parsed all notes";
+       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): parsed all notes";
        return;
     }
 
-    $hash->{note_index} = $index;
-    $hash->{url}        = ReadingsVal($name, "travel_note_link_$index", "");
-    $hash->{callback}   = \&DBPlan_Parse_Travel_Notes;
-    $hash->{noshutdown} = AttrVal($name, "dbplan-remote-noshutdown", 1);
-    $hash->{timeout}    = AttrVal($name, "dbplan-remote-timeout", 5);
-    $hash->{loglevel}   = AttrVal($name, "dbplan-remote-loglevel", 4);
-    $hash->{buf}        = AttrVal($name, "dbplan-remote-loglevel", 1);
+    $hash->{helper}{note_index} = $index;
+    $hash->{url}                = $hash->{helper}{$note_text};
+    $hash->{callback}           = \&DBPlan_Parse_Travel_Notes;
+    $hash->{noshutdown}         = AttrVal($name, "dbplan-remote-noshutdown", 1);
+    $hash->{timeout}            = AttrVal($name, "dbplan-remote-timeout", 5);
+    $hash->{loglevel}           = AttrVal($name, "dbplan-remote-loglevel", 4);
+    $hash->{buf}                = AttrVal($name, "dbplan-remote-loglevel", 1);
 
-    Log3 $name, 4, "DBPlan ($name) - DB notes ($index): next getting $hash->{url}";
+    Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): next getting $hash->{url}";
 
     HttpUtils_NonblockingGet($hash);
 
@@ -1277,31 +1335,6 @@ sub DBPlan_Parse_Timetable($)
 
       $defChar =" " if($defChar eq "nochar");
 	
-      readingsBeginUpdate($hash);
-
-      for($i=1; $i<=3; $i++) {
-
-         readingsBulkUpdate( $hash, "plan_error", $defChar);
-         readingsBulkUpdate( $hash, "plan_departure_$i", $defChar);
-         readingsBulkUpdate( $hash, "plan_arrival_$i", $defChar);
-         readingsBulkUpdate( $hash, "plan_connection_$i", $defChar);
-         readingsBulkUpdate( $hash, "plan_departure_delay_$i", "0" );
-         readingsBulkUpdate( $hash, "plan_arrival_delay_$i", "0" );
-         readingsBulkUpdate( $hash, "travel_duration_$i", $defChar);
-         readingsBulkUpdate( $hash, "travel_change_$i", $defChar);
-         readingsBulkUpdate( $hash, "travel_price_$i", $defChar);
-         readingsBulkUpdate( $hash, "travel_note_link_$i", $defChar);
-         readingsBulkUpdate( $hash, "travel_note_$i", $defChar);
-         readingsBulkUpdate( $hash, "travel_note_text_$i", $defChar);
-         readingsBulkUpdate( $hash, "travel_note_error_$i", $defChar);
-         readingsBulkUpdate( $hash, "travel_departure_$i", $defChar);
-         readingsBulkUpdate( $hash, "travel_destination_$i", $defChar);
-         readingsBulkUpdate( $hash, "travel_vehicle_nr_$i", $defChar);
-
-      }
-
-      readingsEndUpdate( $hash, 1 );
-
       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: readings filled with: $defChar";
     }
 
@@ -1335,9 +1368,9 @@ sub DBPlan_Parse_Timetable($)
       # only for debugging
       if(AttrVal($name, "verbose", 3) >= 5) {
          readingsBeginUpdate($hash);
-         readingsBulkUpdate( $hash, "dbg_connect_plan_1", $1 ) if(defined($1));
-         readingsBulkUpdate( $hash, "dbg_connect_plan_2", $2 ) if(defined($2));
-         readingsBulkUpdate( $hash, "dbg_connect_plan_3", $3 ) if(defined($3));
+         readingsBulkUpdate( $hash, "dbg_connect_plan_1", (defined($1))?$1:$defChar );
+         readingsBulkUpdate( $hash, "dbg_connect_plan_2", (defined($2))?$3:$defChar );
+         readingsBulkUpdate( $hash, "dbg_connect_plan_3", (defined($3))?$2:$defChar );
          readingsEndUpdate( $hash, 1 );
       }
       Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: connection plans read successfully";
@@ -1377,7 +1410,7 @@ sub DBPlan_Parse_Timetable($)
         readingsBulkUpdate( $hash, "plan_error", "Error loading HTML::TableExtract" );
         readingsEndUpdate( $hash, 1 );
         Log3 $name, 2, "DBPlan ($name) - Timetable: Error loading HTML::TableExtract. May be this module is not installed.";
-        return;
+        return $rc;
     }
 
     $data =~ s/\<td.class="ovHeadNoPad"\>&nbsp;\<\/td\>/\<td class="ovHead"\>\nLeer\<br \/\>\nLeer\n\<\/td\>/g;
@@ -1422,7 +1455,7 @@ sub DBPlan_Parse_Timetable($)
       }
     }
 
-    Log3 $name, 2, "DBPlan ($name) - Read Timetablelines: $i";
+    Log3 $name, 4, "DBPlan ($name) - Read Timetablelines: $i";
 
     unless(@planrow) {
       Log3 $name, 2, "DBPlan ($name) - Timetable: HTML::TableExtract failed.";
@@ -1433,9 +1466,21 @@ sub DBPlan_Parse_Timetable($)
       return undef;
     }
 
-    readingsBeginUpdate($hash);
+    my @readings_list = split("(,|\\|)", AttrVal($name, "dbplan-reading-deselect", "none"));
+
+    my $phrase = "";
+    for($i=0;$i<@readings_list;$i++) {
+      $phrase = $readings_list[$i] . "_\\d";
+      $ret = fhem("deletereading $name $phrase", 1);
+      Log3 $name, 4, "DBPlan ($name) - deleteing reading: $phrase";
+    }
 
     my $ai = 0;
+    my $note_text = "";
+    my @d_delay = (0, 0, 0);
+    my @a_delay = (0, 0, 0);
+
+    readingsBeginUpdate($hash);
 
     for($i=1; $i<=3; $i++) {
 
@@ -1460,70 +1505,116 @@ sub DBPlan_Parse_Timetable($)
 
        Log3 $name, 4, "DBPlan ($name) - Timetable $i/$ai: $d_time - $a_time - $d_delay - $a_delay - $change - $duration - $prod - $price";
 
-       readingsBulkUpdate( $hash, "plan_departure_$i", $d_time ) if($d_time =~ m|(\d\d):(\d\d)|);
-       readingsBulkUpdate( $hash, "plan_arrival_$i", $a_time ) if($a_time =~ m|(\d\d):(\d\d)|);
-
-       readingsBulkUpdate( $hash, "plan_connection_$i", $prod ) if(trim($prod) ne "");
-
-       if(($d_time =~ m|(\d\d):(\d\d)|) && ($d_delay =~ m|(\d\d):(\d\d)|)) {
-         my $delay = DBPlan_getMinutesDiff($d_time, $d_delay);
-         readingsBulkUpdate( $hash, "plan_departure_delay_$i", $delay );
-       } else {
-         readingsBulkUpdate( $hash, "plan_departure_delay_$i", "0" );
+       if(!(grep { /^(plan_departure)$/ } @readings_list)) {
+         readingsBulkUpdate( $hash, "plan_departure_$i", ($d_time =~ m|(\d\d):(\d\d)|)?$d_time:$defChar );
        }
 
-       if(($a_time =~ m|(\d\d):(\d\d)|) && ($a_delay =~ m|(\d\d):(\d\d)|)) {
-         my $delay = DBPlan_getMinutesDiff($a_time, $a_delay);
-         readingsBulkUpdate( $hash, "plan_arrival_delay_$i", $delay );
-       } else {
-         readingsBulkUpdate( $hash, "plan_arrival_delay_$i", "0" );
+       if(!(grep { /^(plan_arrival)$/ } @readings_list)) {
+         readingsBulkUpdate( $hash, "plan_arrival_$i", ($a_time =~ m|(\d\d):(\d\d)|)?$a_time:$defChar );
        }
 
-       readingsBulkUpdate( $hash, "plan_travel_duration_$i", $duration ) if(trim($duration) ne "");
-       readingsBulkUpdate( $hash, "plan_travel_change_$i", $change ) if(trim($change) ne "");
+       if(!(grep { /^(plan_connection)$/ } @readings_list)) {
+         readingsBulkUpdate( $hash, "plan_connection_$i", (trim($prod) ne "")?$prod:$defChar );
+       }
 
-       readingsBulkUpdate( $hash, "travel_price_$i", $price) if(trim($price) ne "");
+       if(!(grep { /^(plan_departure_delay)$/ } @readings_list)) {
+         if(($d_time =~ m|(\d\d):(\d\d)|) && ($d_delay =~ m|(\d\d):(\d\d)|)) {
+           my $delay = DBPlan_getMinutesDiff($d_time, $d_delay);
+           readingsBulkUpdate( $hash, "plan_departure_delay_$i", $delay );
+           $d_delay[$i - 1] = 1;
+           Log3 $name, 4, "DBPlan ($name) - departure delay: $delay";
+         } else {
+           readingsBulkUpdate( $hash, "plan_departure_delay_$i", "0" ) if($defChar ne "delete");
+         }
+       }
+
+       if(!(grep { /^(plan_arrival_delay)$/ } @readings_list)) {
+         if(($a_time =~ m|(\d\d):(\d\d)|) && ($a_delay =~ m|(\d\d):(\d\d)|)) {
+           my $delay = DBPlan_getMinutesDiff($a_time, $a_delay);
+           readingsBulkUpdate( $hash, "plan_arrival_delay_$i", $delay );
+           $a_delay[$i - 1] = 1;
+           Log3 $name, 4, "DBPlan ($name) - arrival delay: $delay";
+         } else {
+           readingsBulkUpdate( $hash, "plan_arrival_delay_$i", "0" ) if($defChar ne "delete");
+         }
+       } else {
+         $a_delay[$i - 1] = 1;
+       }
+
+       if(!(grep { /^(plan_travel_duration)$/ } @readings_list)) {
+         readingsBulkUpdate( $hash, "plan_travel_duration_$i", (trim($duration) ne "")?$duration:$defChar );
+       }
+       if(!(grep { /^(plan_travel_change)$/ } @readings_list)) {
+         readingsBulkUpdate( $hash, "plan_travel_change_$i", (trim($change) ne "")?$change:$defChar );
+       }
+
+       if(!(grep { /^(travel_price)$/ } @readings_list)) {
+         readingsBulkUpdate( $hash, "travel_price_$i", (trim($price) ne "")?$price:$defChar);
+       }
 
        ##################################################################################
        # Parsing travel notes (notifications)
        # http://www.img-bahn.de/v/1504/img/achtung_17x19_mitschatten.png
-       $pattern = '\<img src=".*?img\/(.*?)_.*?"\ \/\>\<\/a\>';
-       if ($plan[$i] =~ m/$pattern/s) {
-         readingsBulkUpdate( $hash, "travel_note_$i", $1) if(trim($1) ne "");
-       #  readingsBulkUpdate( $hash, "plan_departure_delay_$i", "Hinweise" )  if(trim($1) ne "");
-       #  readingsBulkUpdate( $hash, "plan_arrival_delay_$i", "Hinweise" )  if(trim($1) ne "");
-         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: travel note for plan $i read successfully";
-       } else {
-         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: no travel note for plan $i found";
+       if(!(grep { /^(travel_note)$/ } @readings_list)) {
+         $pattern = '\<img src=".*?img\/(.*?)_.*?"\ \/\>\<\/a\>';
+         if ($plan[$i] =~ m/$pattern/s) {
+           readingsBulkUpdate( $hash, "travel_note_$i", (trim($1) ne "")?$1:$defChar);
+         #  readingsBulkUpdate( $hash, "plan_departure_delay_$i", "Hinweise" )  if(trim($1) ne "");
+         #  readingsBulkUpdate( $hash, "plan_arrival_delay_$i", "Hinweise" )  if(trim($1) ne "");
+           Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: travel note for plan $i read successfully";
+         } else {
+           readingsBulkUpdate( $hash, "travel_note_$i", $defChar) if($defChar ne "delete");
+           Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: no travel note for plan $i found";
+         }
        }
 
        ##################################################################################
        # Parsing URL for further informations about travel notes (notifications)
+       $note_text = "travel_note_link_$i";
        $pattern = '\<a href="(.*?)amp\;"\>';
        if ($plan[$i] =~ m/$pattern/s) {
           $notelink = $1;
           $notelink =~ s/amp\;//g;
           $notelink =~ s/details=opened.*?yes&/detailsVerbund=opened!/g;
+          $hash->{helper}{$note_text} = $notelink;
           Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: travel note URL for plan $i: $notelink";
-          readingsBulkUpdate( $hash, "travel_note_link_$i", $notelink)  if(trim($notelink) ne "");
+
+          # only for debugging
+          if(AttrVal($name, "verbose", 3) >= 4) {
+            readingsBulkUpdate( $hash, "dbg_travel_note_link_$i", $notelink);
+          }
        } else {
+          $hash->{helper}{$note_text} = "no URL found";
           Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Timetable: no travel note URL for plan $i found";
+          # only for debugging
+          if(AttrVal($name, "verbose", 3) >= 4) {
+            readingsBulkUpdate( $hash, "dbg_travel_note_link_$i", "no URL found");
+          }
        }
 
     } #end for
+
     readingsEndUpdate( $hash, 1 );
 
     ##################################################################################
     # First call of recursiv call of URL for further informations about travel notes (notifications)
-    $hash->{note_index} = $i-1;
-    $hash->{url}        = ReadingsVal($name, "travel_note_link_$hash->{note_index}", "");
-    $hash->{callback}   = \&DBPlan_Parse_Travel_Notes;
-    $hash->{noshutdown} = AttrVal($name, "dbplan-remote-noshutdown", 1);
-    $hash->{timeout}    = AttrVal($name, "dbplan-remote-timeout", 5);
-    $hash->{loglevel}   = AttrVal($name, "dbplan-remote-loglevel", 4);
-    $hash->{buf}        = AttrVal($name, "dbplan-remote-loglevel", 1);
 
-    Log3 $name, 4, "DBPlan ($name) - DB notes ($hash->{note_index}): next getting $hash->{url}";
+    $i--;
+    $note_text = "travel_note_link_$i";
+
+    #$hash->{url}        = ReadingsVal($name, "travel_note_link_$hash->{note_index}", "");
+    $hash->{helper}{note_index} = $i;
+    $hash->{url}                = $hash->{helper}{$note_text};
+    $hash->{callback}           = \&DBPlan_Parse_Travel_Notes;
+    $hash->{noshutdown}         = AttrVal($name, "dbplan-remote-noshutdown", 1);
+    $hash->{timeout}            = AttrVal($name, "dbplan-remote-timeout", 5);
+    $hash->{loglevel}           = AttrVal($name, "dbplan-remote-loglevel", 4);
+    $hash->{buf}                = AttrVal($name, "dbplan-remote-loglevel", 1);
+    $hash->{helper}{delay_1}    = $d_delay[0] . "," . $a_delay[0];
+    $hash->{helper}{delay_2}    = $d_delay[1] . "," . $a_delay[1];
+    $hash->{helper}{delay_3}    = $d_delay[2] . "," . $a_delay[2];
+
+    Log3 $name, 4, "DBPlan ($name) - DB notes ($hash->{helper}{note_index}): next getting $hash->{url}";
 
     HttpUtils_NonblockingGet($hash);
 
@@ -1809,6 +1900,8 @@ sub RegExTest()
 		<li><b>Attributes controlling the behavior:</b></li>
 		<li><b>dbplan-disable</b></li>
 			If set to 1 polling of DB Url will be stopped, setting to 0 or deleting will activate polling<br>
+		<li><b>dbplan-reading-deselect </b></li>
+			deselecting of readings<br>
 		<li><b>dbplan-default-char</b></li>
 			Define a string which will be displayed if no information is available. Defaultstring: "none"<br>
 			When defined the special string "delete" the raeding will not be filled and is not available since an information excists<br>
@@ -1833,25 +1926,25 @@ sub RegExTest()
 	<ul>
 		<li><a href="#internalReadings">internalReadings</a></li>
 		<br>
-		<li><b>departure_(1..3)</b></li>
+		<li><b>plan_departure_(1..3)</b></li>
 			time of departure<br>
-		<li><b>arrival_(1..3)</b></li>
+		<li><b>plan_arrival_(1..3)</b></li>
 			time of arrival<br>
-		<li><b>connection_(1..3)</b></li>
+		<li><b>plan_connection_(1..3)</b></li>
 			type of connection<br>
-		<li><b>departure_delay_(1..3)</b></li>
+		<li><b>plan_departure_delay_(1..3)</b></li>
 			delay time for departure<br>
-		<li><b>arrival_delay_(1..3)</b></li>
+		<li><b>plan_arrival_delay_(1..3)</b></li>
 			delay time for arrival<br>
+		<li><b>plan_travel_duration_(1..3)</b></li>
+			travel duration time<br>
+		<li><b>plan_travel_change_(1..3)</b></li>
+			travel plattform changings<br>
               <br>
 		<li><b>travel_departure_(1..3)</b></li>
 			informations about the departure and the plattform, if available<br>
 		<li><b>travel_destination_(1..3)</b></li>
 			informations about the destination and the plattform, if available<br>
-		<li><b>travel_duration_(1..3)</b></li>
-			travel duration time<br>
-		<li><b>travel_change_(1..3)</b></li>
-			travel plattform changings<br>
 		<li><b>travel_price_(1..3)</b></li>
 			travel price in EUR<br>
               <br>
@@ -1992,6 +2085,8 @@ sub RegExTest()
 		<li><b>Steuernde Attribute:</b></li>
 		<li><b>dbplan-disable </b></li>
 			Device aktivieren / deaktivieren (s. auch FHEM-Doku)<br>
+		<li><b>dbplan-reading-deselect </b></li>
+			delsektieren von Readings<br>
 		<li><b>dbplan-default-char </b></li>
 			Hinweis, der angezeigt wird, wenn keine Information für ein reading zur Verfügung steht.<br>
 			- "none" ist der Standardhinweis.<br> 
@@ -2019,18 +2114,20 @@ sub RegExTest()
 	<ul>
 		<li><a href="#internalReadings">internalReadings</a></li>
 		<br>
-		<li><b>departure_(1..3)</b></li>
-			time of departure<br>
-		<li><b>departure_(1..3) </b></li>
+		<li><b>plan_departure_(1..3) </b></li>
 			Abfahrtszeit<br>
-		<li><b>arrival_(1..3) </b></li>
+		<li><b>plan_arrival_(1..3) </b></li>
 			Ankunftszeit<br>
-		<li><b>connection_(1..3) </b></li>
+		<li><b>plan_connection_(1..3) </b></li>
 			Verbindungstyp<br>
-		<li><b>departure_delay_(1..3) </b></li>
+		<li><b>plan_departure_delay_(1..3) </b></li>
 			Verspätung in der Abfahrtszeit<br>
-		<li><b>arrival_delay_(1..3) </b></li>
+		<li><b>plan_arrival_delay_(1..3) </b></li>
 			Verspätung in der Ankunftszeit<br>
+		<li><b>plan_travel_duration_(1..3) </b></li>
+			Reisezeit<br>
+		<li><b>plan_travel_change_(1..3) </b></li>
+			Anzahl der Umstiege<br>
               <br>
 		<li><b>travel_note_(1..3) </b></li>
 			Hinweise für die Verbindung<br>
@@ -2041,14 +2138,10 @@ sub RegExTest()
 		<li><b>travel_note_error_(1..3) </b></li>
 			Fehlertext der Detailinformation<br>
               <br>
-		<li><b>travel_duration_(1..3) </b></li>
-			Reisezeit<br>
 		<li><b>travel_departure_(1..3) </b></li>
 			Informationen über den Abfahtsbahnhof und das Ankunftsgleis<br>
 		<li><b>travel_destination_(1..3) </b></li>
 			Informationen über den Zielbahnhof und das Ankunftsgleis<br>
-		<li><b>travel_change_(1..3) </b></li>
-			Anzahl der Umstiege<br>
 		<li><b>travel_price_(1..3) </b></li>
 			Fahrpreis<br>
 	</ul>
