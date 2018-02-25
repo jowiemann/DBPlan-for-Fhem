@@ -1,3 +1,8 @@
+23.02.18
+- Neue Attribut: dbplan-reading-deselect: deselektieren von Readings. 
+- Fehler bei der Ermittlung der Travel Notes korrigiert.
+- Reading travel_note_link_<n> wird jetzt ab verbose 4 als dbg_travel_note_link_<n> gebildet
+
 15.01.2018
 - Parsing-Fehler bei Verspätungszeiten bei Zeitvorgabe korrigiert
 
