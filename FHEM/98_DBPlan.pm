@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 80662 2018-02-23 18:53:00Z jowiemann $
+# $Id: 98_DBPlan.pm 80662 2022-11-17 14:38:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm (Testversion)
@@ -65,7 +65,7 @@ sub DBPlan_Initialize($) {
         . "dbplan-special-char-decode:none,utf8,latin1(default) "
         . "dbplan-reading-deselect:multiple-strict,plan_departure,plan_arrival,plan_connection,plan_departure_delay,plan_arrival_delay,"
         . "plan_travel_change,plan_travel_duration,travel_note,travel_note_text,travel_note_error,"
-        . "travel_departure,travel_destination,travel_price "
+        . "travel_departure_station,travel_departure_platform,travel_destination_station,travel_destination_platform,travel_price "
         . $readingFnAttributes;
 }
 
@@ -74,7 +74,7 @@ sub DBPlan_Define($$) {
     my ( $hash, $def ) = @_;
     my @a = split( "[ \t][ \t]*", $def );
 
-    $hash->{version} = '23.02.2018 18:23:00';
+    $hash->{version} = '17.11.2022';
     
     return "DBPlan_Define - too few parameters: define <name> DBPlan <interval> [<time offset>]" if( (@a < 3) || (@a > 4));
 
@@ -1113,12 +1113,11 @@ sub DBPlan_Parse_Travel_Notes($)
 
     ##################################################################################
     # Parsing departure plattform
-    if(!(grep { /^(travel_departure)$/ } @readings_list)) {
+    if(!(grep { /^(travel_departure_platform)$/ } @readings_list)) {
       $pattern = '\<\/span\>.(Gl.*?).\<br.\/\>.\<\/div\>.\<div.class="rline.haupt.mot"\>';
 
-      $plattform = 'none';
+      $plattform = "none";
       if ($data =~ m/$pattern/s) {
-         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel departure plattform for plan $index read successfully";
          $plattform = $1;
          if($convChar eq "latin1(default)"){
            $plattform = DBPlan_html2uml($plattform);
@@ -1126,15 +1125,22 @@ sub DBPlan_Parse_Travel_Notes($)
          if($convChar eq "utf8"){
            $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
          }
+         readingsBulkUpdate( $hash, "travel_departure_platform_$index", $plattform);
       } else {
-         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel departure plattform for plan $index found";
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel departure platform for plan $index found";
+         readingsBulkUpdate( $hash, "travel_departure_platform_$index", $defChar) if($defChar ne "delete");
       }
+    }
 
-      # and then parsing departure place
+
+    # and then parsing departure place
+    if(!(grep { /^(travel_departure_station)$/ } @readings_list)) {
       $pattern = '"rline.haupt.routeStart".style="."\>.\<span.class="bold"\>(.*?)\<\/span\>';
 
+      $plattform = "none";
       if ($data =~ m/$pattern/s) {
-         $plattform = $1.' - '.$plattform;
+         $plattform = $1;
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): $1";
          if($convChar eq "latin1(default)"){
            $plattform = DBPlan_html2uml($plattform);
          }
@@ -1142,12 +1148,10 @@ sub DBPlan_Parse_Travel_Notes($)
            $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
          }
          Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel departure for plan $index read successfully";
-         readingsBulkUpdate( $hash, "travel_departure_$index", $plattform);
-      }
-
-      if( $plattform eq "none") {
+         readingsBulkUpdate( $hash, "travel_departure_station_$index", $plattform);
+      } else {
          Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel departure for plan $index found";
-         readingsBulkUpdate( $hash, "travel_departure_$index", $defChar) if($defChar ne "delete");
+         readingsBulkUpdate( $hash, "travel_departure_station_$index", $defChar) if($defChar ne "delete");
       }
     }
 
@@ -1177,12 +1181,11 @@ sub DBPlan_Parse_Travel_Notes($)
 
     ##################################################################################
     # Parsing destination plattform
-    if(!(grep { /^(travel_destination)$/ } @readings_list)) {
+    if(!(grep { /^(travel_destination_platform)$/ } @readings_list)) {
       $pattern = '\<div.class="rline.haupt.routeEnd.routeEnd__IV"\>.*?(Gl.*?).\<br.\/\>.\<span.class="bold"\>.*?\<\/span\>';
 
       $plattform = 'none';
       if ($data =~ m/$pattern/s) {
-         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel destination plattform for plan $index read successfully";
          $plattform = $1;
          if($convChar eq "latin1(default)"){
            $plattform = DBPlan_html2uml($plattform);
@@ -1190,29 +1193,32 @@ sub DBPlan_Parse_Travel_Notes($)
          if($convChar eq "utf8"){
            $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
          }
-         readingsBulkUpdate( $hash, "travel_destination_$index", $plattform);
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel destination platform for plan $index read successfully";
+         readingsBulkUpdate( $hash, "travel_destination_platform_$index", $plattform);
       } else {
-         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel destination plattform for plan $index found";
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel destination platform for plan $index found";
+         readingsBulkUpdate( $hash, "travel_destination_platform$index", $defChar) if($defChar ne "delete");
       }
+    }
 
-      # and then parsing destination place
+    # and then parsing destination place
+    if(!(grep { /^(travel_destination_station)$/ } @readings_list)) {
       $pattern = '\<div.class="rline.haupt.routeEnd.routeEnd__IV"\>.*?\<br.\/\>.\<span.class="bold"\>(.*?)\<\/span\>';
 
+      $plattform = 'none';
       if ($data =~ m/$pattern/s) {
-         $plattform = $1.' - '.$plattform;
+         $plattform = $1;
          if($convChar eq "latin1(default)"){
            $plattform = DBPlan_html2uml($plattform);
          }
          if($convChar eq "utf8"){
            $plattform = DBPlan_decode(DBPlan_html2uml($plattform));
          }
-         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel destination for plan $index read successfully";
-         readingsBulkUpdate( $hash, "travel_destination_$index", $plattform);
-      } 
-
-      if ($plattform eq 'none') {
-         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel destination for plan $index found";
-         readingsBulkUpdate( $hash, "travel_destination_$index", $defChar) if($defChar ne "delete");
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): travel destination station for plan $index read successfully";
+         readingsBulkUpdate( $hash, "travel_destination_station_$index", $plattform);
+      } else {
+         Log3 $name, 4, "DBPlan ($name) - DBPlan_Parse_Travel_Notes ($index): no travel destination station for plan $index found";
+         readingsBulkUpdate( $hash, "travel_destination_station_$index", $defChar) if($defChar ne "delete");
       }
     }
 
@@ -1659,7 +1665,6 @@ sub DBPlan_html2txt($)
 
 sub DBPlan_html2uml($)
 {
-
     my ($string) = @_;
 
     $string =~ s/&nbsp;/ /g;
@@ -1670,6 +1675,8 @@ sub DBPlan_html2uml($)
     $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/Ã–/g;
     $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/Ã¼/g;
     $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/Ãœ/g;
+    $string =~ s/(\x28|\x28|&lpar;|\\u0028|\\u0028|&#40;|&#x0028;)/\(/g;
+    $string =~ s/(\x29|\x29|&rpar;|\\u0029|\\u0029|&#41;|&#x0029;)/\)/g;
     $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/ÃŸ/g;
     $string =~ s/<.+?>//g;
     $string =~ s/(^\s+|\s+$)//g;
@@ -1939,12 +1946,16 @@ sub RegExTest()
 		<li><b>plan_travel_duration_(1..3)</b></li>
 			travel duration time<br>
 		<li><b>plan_travel_change_(1..3)</b></li>
-			travel plattform changings<br>
+			travel platform changings<br>
               <br>
-		<li><b>travel_departure_(1..3)</b></li>
-			informations about the departure and the plattform, if available<br>
-		<li><b>travel_destination_(1..3)</b></li>
-			informations about the destination and the plattform, if available<br>
+		<li><b>travel_departure_platform(1..3)</b></li>
+			informations about the platform, if available<br>
+		<li><b>travel_departure_station(1..3)</b></li>
+			informations about the station, if available<br>
+		<li><b>travel_destination_platform(1..3)</b></li>
+			informations about the the platform, if available<br>
+		<li><b>travel_destination_station(1..3)</b></li>
+			informations about the station, if available<br>
 		<li><b>travel_price_(1..3)</b></li>
 			travel price in EUR<br>
               <br>
@@ -2138,10 +2149,14 @@ sub RegExTest()
 		<li><b>travel_note_error_(1..3) </b></li>
 			Fehlertext der Detailinformation<br>
               <br>
-		<li><b>travel_departure_(1..3) </b></li>
-			Informationen über den Abfahtsbahnhof und das Ankunftsgleis<br>
-		<li><b>travel_destination_(1..3) </b></li>
-			Informationen über den Zielbahnhof und das Ankunftsgleis<br>
+		<li><b>travel_departure_platform(1..3) </b></li>
+			Informationen über das Abfahrtsgleis<br>
+		<li><b>travel_departure_station(1..3) </b></li>
+			Informationen über den Abfahrtsbahnhof<br>
+		<li><b>travel_destination_platform(1..3) </b></li>
+			Informationen über das Ankunftsgleis<br>
+		<li><b>travel_destination_station(1..3) </b></li>
+			Informationen über den Zielbahnhof<br>
 		<li><b>travel_price_(1..3) </b></li>
 			Fahrpreis<br>
 	</ul>
