@@ -1,6 +1,7 @@
-17.11.22
+21.11.22
 - Reading travel-departure in travel_departure_platform / travel_departure_station aufgeteilt. 
 - Reading travel-departure in travel_destination_platform / travel_destination_aufgeteilt aufgeteilt. 
+- commandref überarbeitet
 
 23.02.18
 - Neue Attribut: dbplan-reading-deselect: deselektieren von Readings. 
