@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 81968 2022-11-17 14:38:00Z jowiemann $
+# $Id: 98_DBPlan.pm 80662 2018-02-23 18:53:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm (Testversion)
@@ -9,7 +9,7 @@
 #     Z=destination will be replace with "S=".AttrVal($name, "dbplan_destination", undef)
 #     See also the domumentation for external calls
 #     Internet-Reiseauskunft der Deutschen Bahn AG
-#     Externe Aufrufparameter und RÃƒÆ’Ã‚Â¼ckgabeparameter an externe Systeme
+#     Externe Aufrufparameter und R�ckgabeparameter an externe Systeme
 ##############################################################################
 
 use strict;                          
@@ -74,7 +74,7 @@ sub DBPlan_Define($$) {
     my ( $hash, $def ) = @_;
     my @a = split( "[ \t][ \t]*", $def );
 
-    $hash->{version} = '17.11.2022';
+    $hash->{version} = '21.11.2022';
     
     return "DBPlan_Define - too few parameters: define <name> DBPlan <interval> [<time offset>]" if( (@a < 3) || (@a > 4));
 
@@ -522,15 +522,15 @@ sub DBPlan_getMinutesDiff
 # generating bit pattern for DB products
 #
 # Bit Nummer Produktklasse
-#         0  ICE-ZÃƒÆ’Ã‚Â¼ge
-#         1  Intercity- und EurocityzÃƒÆ’Ã‚Â¼ge
-#         2  Interregio- und SchnellzÃƒÆ’Ã‚Â¼ge
-#         3  Nahverkehr, sonstige ZÃƒÆ’Ã‚Â¼ge
+#         0  ICE-Z�ge
+#         1  Intercity- und Eurocityz�ge
+#         2  Interregio- und Schnellz�ge
+#         3  Nahverkehr, sonstige Z�ge
 #         4  S-Bahnen
 #         5  Busse
 #         6  Schiffe
 #         7  U-Bahnen
-#         8  StraÃƒÆ’Ã…Â¸enbahnen
+#         8  Stra�enbahnen
 #         9  Anruf Sammeltaxi
 #
 sub DBPlan_products($)
@@ -803,7 +803,7 @@ sub DBPlan_Parse_Stationtable($)
     my $pattern = '';
 
     if ($data =~ m/\<div.class="haupt errormsg"\>(.*?)\<\/div\>/s) {
-        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃƒÆ’Ã‚Â¼fen.";
+        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃ¼fen.";
         readingsBeginUpdate($hash);
         readingsBulkUpdate( $hash, "table_error", "error in DB request: " . DBPlan_decode(DBPlan_html2uml($1)) );
         readingsEndUpdate( $hash, 1 );
@@ -851,25 +851,25 @@ sub DBPlan_Parse_Stationtable($)
         $table_row .= $1;
       }
 
-      # nÃ¤chster Bahnhof
+      # n�chster Bahnhof
       $pattern = '\<\/span\>\<\/a\>&gt;&gt;(.*?)\<br.\/\>\<span.class';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . $1;
       }
 
-      # Uhrzeit ohne Verspätung
+      # Uhrzeit ohne Versp?ng
       $pattern = '\<br.\/\>\<span.class="bold"\>(.*?)\<\/span\>\<\/div\>';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . $1;
       }
 
-      # Uhrzeit mit Verspätung
+      # Uhrzeit mit Versp?ng
       $pattern = '\<br.\/\>\<span.class="bold"\>(.*?)\<\/span\>&nbsp;';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . $1;
       }
 
-      # VerspÃ¤tung
+      # Versp�tung
       $pattern = '\<span.class="okmsg"\>(.*?)\<\/span\>';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . $1;
@@ -877,7 +877,7 @@ sub DBPlan_Parse_Stationtable($)
         $table_row .= "|-";
       }
 
-      # VerspÃ¤tung rot
+      # Versp�tung rot
       $pattern = '\<span.class="red"\>(.*?)\<\/span\>,&nbsp;&nbsp;';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . $1;
@@ -1347,7 +1347,7 @@ sub DBPlan_Parse_Timetable($)
     my $pattern = '\<div class="haupt bline leftnarrow"\>(.*?)\<div class="bline bggrey stdpadding"\>';
 
     if ($data =~ m/MOBI_ASK_DEU_de_error/s) {
-        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃƒÆ’Ã‚Â¼fen.";
+        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃ¼fen.";
         readingsBeginUpdate($hash);
         readingsBulkUpdate( $hash, "plan_error", "error in DB request" );
         readingsEndUpdate( $hash, 1 );
@@ -1449,9 +1449,9 @@ sub DBPlan_Parse_Timetable($)
           $retRow = join(';', @myValues);
           $retRow =~ s/\n|\r/;/g; #s,[\r\n]*,,g;
           if($defChar ne "delete") {
-            $retRow =~ s/Ãƒâ€šÃ‚Â /$defChar/g;
+            $retRow =~ s/Â /$defChar/g;
           } else {
-            $retRow =~ s/Ãƒâ€šÃ‚Â /$filler/g;
+            $retRow =~ s/Â /$filler/g;
           }
         }
 
@@ -1629,13 +1629,13 @@ sub DBPlan_Parse_Timetable($)
 
 #####################################
 # replaces all HTML entities to their utf-8 counter parts.
-# c3 bc = Ã¼
-# c3 9f = ÃŸ
-# c3 b6 = Ã¶
-# c3 a4 = Ã¤
-# c3 84 = Ã„
-# c3 96 = Ã–
-# c3 9c = Ãœ
+# c3 bc = �
+# c3 9f = �
+# c3 b6 = �
+# c3 a4 = �
+# c3 84 = �
+# c3 96 = �
+# c3 9c = �
 # c2 ab = "
 # c2 bb = "
 # e2 80 = ""
@@ -1649,13 +1649,13 @@ sub DBPlan_html2txt($)
 
     $string =~ s/&nbsp;/ /g;
     $string =~ s/&amp;/&/g;
-    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/ÃƒÆ’Ã‚Â¤/g;
-    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/ÃƒÆ’Ã¢â‚¬Å¾/g;
-    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/ÃƒÆ’Ã‚Â¶/g;
-    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/ÃƒÆ’Ã¢â‚¬â€œ/g;
-    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/ÃƒÆ’Ã‚Â¼/g;
-    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/ÃƒÆ’Ã…â€œ/g;
-    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/ÃƒÆ’Ã…Â¸/g;
+    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/Ã¤/g;
+    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/Ã„/g;
+    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/Ã¶/g;
+    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/Ã–/g;
+    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/Ã¼/g;
+    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/Ãœ/g;
+    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/ÃŸ/g;
     $string =~ s/<.+?>//g;
     $string =~ s/(^\s+|\s+$)//g;
 
@@ -1669,15 +1669,15 @@ sub DBPlan_html2uml($)
 
     $string =~ s/&nbsp;/ /g;
     $string =~ s/&amp;/&/g;
-    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/Ã¤/g;
-    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/Ã„/g;
-    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/Ã¶/g;
-    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/Ã–/g;
-    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/Ã¼/g;
-    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/Ãœ/g;
+    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/�/g;
+    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/�/g;
+    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/�/g;
+    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/�/g;
+    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/�/g;
+    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/�/g;
     $string =~ s/(\x28|\x28|&lpar;|\\u0028|\\u0028|&#40;|&#x0028;)/\(/g;
     $string =~ s/(\x29|\x29|&rpar;|\\u0029|\\u0029|&#41;|&#x0029;)/\)/g;
-    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/ÃŸ/g;
+    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/�/g;
     $string =~ s/<.+?>//g;
     $string =~ s/(^\s+|\s+$)//g;
 
@@ -1688,15 +1688,15 @@ sub DBPlan_html2uml($)
 # UTF8
 sub DBPlan_decode($) {
   my($text) = @_;  
-  $text =~ s/Ã¤/ÃƒÂ¤/g;
-  $text =~ s/Ã„/Ãƒâ€ž/g;
-  $text =~ s/Ã¶/ÃƒÂ¶/g;
-  $text =~ s/Ã–/Ãƒ/g;
-  $text =~ s/Ã¼/ÃƒÂ¼/g;
-  $text =~ s/Ãœ/ÃƒÅ“/g;
-  $text =~ s/ÃŸ/ÃƒÅ¸/g;
-  $text =~ s/Â´/Ã‚Â´/g;
-  $text =~ s/"/Ã‚â€ž/g;  
+  $text =~ s/�/ä/g;
+  $text =~ s/�/Ä/g;
+  $text =~ s/�/ö/g;
+  $text =~ s/�/Ö/g;
+  $text =~ s/�/ü/g;
+  $text =~ s/�/Ü/g;
+  $text =~ s/�/ß/g;
+  $text =~ s/�/´/g;
+  $text =~ s/"//g;  
   return $text;
 }
 
@@ -1781,194 +1781,397 @@ sub RegExTest()
 1;
 
 =pod
+=item device
+=item summary Fetches informations from the info page of the Deutsche Bahn.
+=item summary_DE Holt Informationen von der Info-Seite der Deutschen Bahn.
+
 =begin html
 
 <a name="DBPlan"></a>
 <h3>DBPlan</h3>
-
+<div> 
 <ul>
-	The module fetches from the info page of the DB <https://reiseauskunft.bin.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1>
-       up-to-date information on a specified connection and stores it in Fhem readings.
-       The file with the IBNR codes and stations of Deutsche Bahn can be download at http://www.michaeldittrich.de/ibnr.
+   The module fetches from the info page of the DB <https://reiseauskunft.bin.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1>
+   up-to-date information on a specified connection and stores it in Fhem readings.
+   The file with the IBNR codes and stations of Deutsche Bahn can be download at http://www.michaeldittrich.de/ibnr.
 
-	<br><br>
-	<b>Prerequisites</b>
-	<ul>
-		<br>
-		<li>
-			This Module uses the non blocking HTTP function HttpUtils_NonblockingGet provided by FHEM's HttpUtils in a new Version published in December 2013.<br>
-			If the module is not already present in your Fhem environment, please update FHEM via the update command.<br>
-		</li>
+   <br><br>
+   <b>Prerequisites</b>
+   <ul>
+      <br>
+      <li>
+         This Module uses the non blocking HTTP function HttpUtils_NonblockingGet provided by FHEM's HttpUtils in a new Version published in December 2013.<br>
+         If the module is not already present in your Fhem environment, please update FHEM via the update command.<br>
+      </li>
 		
-	</ul>
-	<br>
-       State will show the device status (DevState): 
-	<ul>
-		<li><b>initialized</b></li>
-			the device is defined, but no successfully requests and parsing has been done<br>
-                     this state will also be set when changing from <inactive> to <active> and <disabled> to <enabled><br>
-		<li><b>active</b></li>
-			the device is working<br>
-		<li><b>stopped</b></li>
-			the device timer has been stopped. A reread is possibel<br>
-		<li><b>disabled</b></li>
-			the device is disabled.<br>
+   </ul>
+   <br>
 
-	</ul>
-	<br>
+   State will show the device status (DevState): 
+   <ul>
+      <li><b>initialized</b>
+         the device is defined, but no successfully requests and parsing has been done<br>
+         this state will also be set when changing from <inactive> to <active> and <disabled> to <enabled><br>
+      </li>
 
-	<a name="DBPlandefine"></a>
-	<b>Define</b>
-	<ul>
-		<br>
-		<code>define &lt;name&gt; DBPlan &lt;Refresh interval in seconds [time offset in minutes]&gt;</code>
-		<br><br>
-		The module connects to the given URL every Interval seconds and then parses the response. If time_offset is
-                defined, the moudules uses the actual time + time_offset as start point<br>
-		<br>
-		Example:<br>
-		<br>
-		<ul><code>define DBPlan_Test DBPlan 60</code></ul>
-	</ul>
-	<br>
+      <li><b>active</b>
+         the device is working<br>
+      </li>
 
-	<a name="DBPlanconfiguration"></a>
-	<b>Configuration of DBPlan</b><br><br>
-	<ul>
-		Example for a timetable query:<br><br>
-		<ul><code>
-                   attr DB_Test dbplan_station  Köln-Weiden West
-                   attr DB_Test dbplan_destination Köln HBF
-                   attr DB_Test room OPNV
-		</code></ul>
-	</ul>
-	<br>
+      <li><b>stopped</b>
+         the device timer has been stopped. A reread is possibel<br>
+      </li>
 
-	<a name="DBPlanset"></a>
-	<b>Set-Commands</b><br>
-	<ul>
-		<li><b>interval</b></li>
-			set new interval time in seconds for parsing the DB time table<br>
-		<li><b>timeOffset</b></li>
-			Start of search: actual time plus time_offset.<br>
-		<li><b>reread</b></li>
-			reread and parse the DB time table. Only active, if not DevState: disabled<br>
-		<li><b>stop</b></li>
-			stop interval timer, only active if DevState: active<br>
-		<li><b>start</b></li>
-			restart interval timer, only active if DevState: stopped<br>
-	</ul>
-	<br>
-	<a name="DBPlanget"></a>
-	<b>Get-Commands</b><br>
-	<ul>
-		<li><b>PlainText</b></li>
-			the informations will be shown as plain text<br>
-		<li><b>searchStation</b></li>
-			search for a german DB Station. Without search pattern all stations will be shown.<br>
-	</ul>
-	<br>
+      <li><b>disabled</b>
+         the device is disabled.<br>
+      </li>
 
-	<a name="DBPlanattr"></a>
-	<b>Attributes</b><br><br>
-	<ul>
-		<li><a href="#readingFnAttributes">readingFnAttributes</a></li>
+   </ul>
+   <br>
+
+   <a name="DBPlandefine"></a>
+   <b>Define</b>
+   <ul>
+   <br>
+      <code>define &lt;name&gt; DBPlan &lt;Refresh interval in seconds [time offset in minutes]&gt;</code>
+      <br><br>
+      The module connects to the given URL every Interval seconds and then parses the response. If time_offset is
+      defined, the moudules uses the actual time + time_offset as start point<br>
+      <br>
+      Example:<br>
 		<br>
-		<li><b>dbplan_station</b></li>
-			place of departure<br>
-		<li><b>dbplan_destination</b></li>
-			place of destination<br>
-		<li><b>dbplan_via_1</b></li>
-			DB first via station<br>
-		<li><b>dbplan_via_2</b></li>
-			DB second via station<br>
-		<li><b>dbplan_journey_prod</b></li>
-			DB travel products like: ICE<br>
-		<li><b>dbplan_journey_opt</b></li>
-			DB journey options like: direct connection<br>
-		<li><b>dbplan_tariff_class</b></li>
-			DB tariff class: 1 or 2 class<br>
-		<li><b>dbplan_board_type</b></li>
-			DB board type: departure or arrival (depart / arrive)<br>
-		<li><b>dbplan_delayed_Journey</b></li>
-			DB delayed journey: on or off<br>
-		<li><b>dbplan_max_Journeys</b></li>
-			Number of displayed train connections in the station view.<br>
-		<li><b>dbplan_reg_train</b></li>
-			The train designation, e.g. S for everything S- and streetcars, ICE all ICE or ICE with train number.<br>
-		<li><b>dbplan_travel_date</b></li>
-			Define the date of travel in dd.mm.yy. Default: actual date.<br>
-		<li><b>dbplan_travel_time</b></li>
-			Define the time of travel in hh:mm. Default: actual time.<br>
-		<li><b>dbplan_addon_options</b></li>
-			extended options like discribed in the api document: <li><a http://webcache.googleusercontent.com/search?q=cache:wzb_OlIUCBQJ:www.geiervally.lechtal.at/sixcms/media.php/1405/Parametrisierte%2520%25DCbergabe%2520Bahnauskunft(V%25205.12-R4.30c,%2520f%25FCr.pdf+&cd=3&hl=de&ct=clnk&gl=de
-">Parametrisierte ÃƒÆ’Ã…â€œbergabe Bahnauskunft</a></li><br>
-              <br>
-		<li><b>Attributes controlling the behavior:</b></li>
-		<li><b>dbplan-disable</b></li>
-			If set to 1 polling of DB Url will be stopped, setting to 0 or deleting will activate polling<br>
-		<li><b>dbplan-reading-deselect </b></li>
-			deselecting of readings<br>
-		<li><b>dbplan-default-char</b></li>
-			Define a string which will be displayed if no information is available. Defaultstring: "none"<br>
-			When defined the special string "delete" the raeding will not be filled and is not available since an information excists<br>
-			When defined the special string "nochar" the raeding will be filled with " "<br>
-		<li><b>dbplan-tabel-headers</b></li>
-			internal attribute to change the header information used by HTML::TableExtract<br>
-		<li><b>dbplan-station-file</b></li>
-			Directory and name of the station table to be used: /opt/fhem/FHEM/deutschland_bhf.csv<br>
-			This table is to be used as a help for the search for railway stations and has no other function in the module.<br>
-		<li><b>dbplan-base-type</b></li>
-			Select whether a station table (table) or a timetable (plan) display is to be generated<br>
-              <br>
-		<li><b>HTTPMOD attributes, have a look at the documentation</b></li>
-		<li><b>dbplan-remote-timeout</b></li>
-		<li><b>dbplan-remote-noshutdown</b></li>
-		<li><b>dbplan-remote-loglevel</b></li>
-		<li><b>dbplan-remote-buf</b></li>
-	</ul>
-       <br>
-	<a name="DBPlanReadings"></a>
-	<b>Readings</b><br><br>
-	<ul>
-		<li><a href="#internalReadings">internalReadings</a></li>
-		<br>
-		<li><b>plan_departure_(1..3)</b></li>
-			time of departure<br>
-		<li><b>plan_arrival_(1..3)</b></li>
-			time of arrival<br>
-		<li><b>plan_connection_(1..3)</b></li>
-			type of connection<br>
-		<li><b>plan_departure_delay_(1..3)</b></li>
-			delay time for departure<br>
-		<li><b>plan_arrival_delay_(1..3)</b></li>
-			delay time for arrival<br>
-		<li><b>plan_travel_duration_(1..3)</b></li>
-			travel duration time<br>
-		<li><b>plan_travel_change_(1..3)</b></li>
-			travel platform changings<br>
-              <br>
-		<li><b>travel_departure_platform(1..3)</b></li>
-			informations about the platform, if available<br>
-		<li><b>travel_departure_station(1..3)</b></li>
-			informations about the station, if available<br>
-		<li><b>travel_destination_platform(1..3)</b></li>
-			informations about the the platform, if available<br>
-		<li><b>travel_destination_station(1..3)</b></li>
-			informations about the station, if available<br>
-		<li><b>travel_price_(1..3)</b></li>
-			travel price in EUR<br>
-              <br>
-		<li><b>travel_error_(1..3)</b></li>
-			error information when calling the note url<br>
-		<li><b>travel_note_(1..3)</b></li>
-			travel note for travel plan<br>
-		<li><b>travel_note_link_(1..3)</b></li>
-			travel note link for further informations<br>
-		<li><b>travel_note_text_(1..3)</b></li>
-			travel note text<br>
-	</ul>
+      <ul>
+       <code>define DBPlan_Test DBPlan 60</code>
+      </ul>
+   </ul><br>
+
+   <a name="DBPlanconfiguration"></a>
+   <b>Configuration of DBPlan</b><br><br>
+   <ul>
+      Example for a timetable query:<br><br>
+      <ul>
+         <code>
+           attr DB_Test dbplan_station  Köln-Weiden West
+           attr DB_Test dbplan_destination Köln HBF
+           attr DB_Test room OPNV
+         </code>
+      </ul>
+   </ul>
+   <br>
+
+   <a name="DBPlanset"></a>
+   <b>Set</b>
+   <ul>
+      <li><a name="inactive"></a>
+         <dt><code> &lt;name&gt; inactive</code></dt>
+         <br>
+         Set temporary inactiv<br>
+      </li><br>
+
+      <li><a name="active"></a>
+         <dt><code> &lt;name&gt; inactive</code></dt>
+         <br>
+         Set inactiv (default)<br>
+      </li><br>
+
+      <li><a name="interval"></a>
+         <dt><code> &lt;name&gt; interval &lt;seconds&gt;</code></dt>
+         <br>
+         Set new interval time in seconds for parsing the DB time table<br>
+      </li><br>
+
+      <li><a name="timeOffset"></a>
+         <dt><code> &lt;name&gt; timeOffset &lt;time_offset&gt;</code></dt>
+         <br>
+         Start of search: actual time plus time_offset.<br>
+      </li><br>
+
+      <li><a name="rereadDBInfo"></a>
+         <dt><code> &lt;name&gt; rereadDBInfo</code></dt>
+         <br>
+         Reread and parse the DB time table. Only active, if not DevState: disabled
+      </li><br>
+
+      <li><a name="rereadStationFile"></a>
+         <dt><code> &lt;name&gt; rereadStationFile</code></dt>
+         <br>
+         Reloads the station file if available.
+      </li><br>
+
+   </ul>
+   <br>
+
+   <a name="DBPlanget"></a>
+   <b>Get</b>
+   <ul>
+   <br>
+      <li><a name="PlainText"></a>
+         <dt><code>get &lt;name&gt; PlainText</code></dt>
+         <br>
+         The informations will be shown as plain text<br>
+      </li><br>
+
+      <li><a name="searchStation"></a>
+         <dt><code>get &lt;name&gt; searchStation &lt;name&gt;</code></dt>
+         <br>
+         Search for a german DB Station. Without search pattern all stations will be shown.<br>
+      </li><br>
+   </ul>
+   <br>
+
+   <a name="DBPlanattr"></a>
+   <b>Attributes</b>
+   <ul>
+      <li><a href="#readingFnAttributes">readingFnAttributes</a></li>
+      <br>
+
+      <li><a name="dbplan_station"></a>
+         <dt><code>dbplan_station &lt;station&gt;</code></dt>
+         <br>
+         Station of departure
+      </li>
+      <br>
+
+      <li><a name="dbplan_destination"></a>
+         <dt><code>dbplan_destination_station &lt;station&gt;</code></dt>
+         <br>
+         Station of destination
+      </li>
+      <br>
+
+      <li><a name="dbplan_via_1"></a>
+         <dt><code>dbplan_via_1 &lt;station&gt;</code></dt>
+         <br>
+         DB 1st via station
+      </li>
+      <br>
+
+      <li><a name="dbplan_via_2"></a>
+         <dt><code>dbplan_via_2 &lt;station&gt;</code></dt>
+         <br>
+         DB 2nd via station
+      </li>
+      <br>
+
+      <li><a name="dbplan_journey_prod"></a>
+         <dt><code>dbplan_journey_prod &lt;journey&gt;</code></dt>
+         <br>
+         DB journey products like: ICE
+      </li>
+      <br>
+
+      <li><a name="dbplan_journey_opt"></a>
+         <dt><code>dbplan_journey_opt &lt;option&gt;</code></dt>
+         <br>
+         DB journey options like: direct connection
+      </li>
+      <br>
+
+      <li><a name="dbplan_tariff_class"></a>
+         <dt><code>dbplan_tariff_class &lt;class&gt;</code></dt>
+         <br>
+         DB tariff class: 1st or 2nd class
+      </li>
+      <br>
+
+      <li><a name="dbplan_board_type"></a>
+         <dt><code>dbplan_board_type &lt;depart | arrive&gt;</code></dt>
+         <br>
+         DB board type: departure or arrival (depart / arrive)
+      </li>
+      <br>
+
+      <li><a name="dbplan_delayed_Journey"></a>
+         <dt><code>dbplan_delayed_Journey &lt;on | off&gt;</code></dt>
+         <br>
+         DB delayed journey: on or off
+      </li>
+      <br>
+
+      <li><a name="dbplan_max_Journeys"></a>
+         <dt><code>dbplan_max_Journeys &lt;1..30&gt;</code></dt>
+         <br>
+         Number of displayed train connections in the station view.
+      </li>
+      <br>
+
+      <li><a name="dbplan_reg_train"></a>
+         <dt><code>dbplan_reg_train &lt;designation;</code></dt>
+         <br>
+         The train designation, e.g. S for everything S- and streetcars, ICE all ICE or ICE with train number.
+      </li>
+      <br>
+
+      <li><a name="dbplan_travel_date"></a>
+         <dt><code>dbplan_travel_date &lt;dd.mm.yy&gt;</code></dt>
+         <br>
+         Define the date of travel in dd.mm.yy. Default: actual date.
+      </li>
+      <br>
+
+      <li><a name="dbplan_travel_time"></a>
+         <dt><code>dbplan_travel_time&lt;hh.mm&gt;</code></dt>
+         <br>
+         Define the time of travel in hh:mm. Default: actual time.
+      </li>
+      <br>
+
+      <li><a name="dbplan_addon_options"></a>
+         <dt><code>dbplan_addon_options&lt;addon&gt;</code></dt>
+         <br>
+         Extended options like discribed in the DB api document.
+      </li>
+      <br>
+
+      <li><b>Attributes controlling the behavior:</b></li>
+
+      <li><a name="dbplan-disable"></a>
+         <dt><code>dbplan-disable&lt;0 | 1&gt;</code></dt>
+         <br>
+         If set to 1 polling of DB Url will be stopped, setting to 0 or deleting will activate polling.
+      </li>
+      <br>
+
+      <li><a name="dbplan-reading-deselect"></a>
+         <dt><code>dbplan-reading-deselect&lt;list&gt;</code></dt>
+         <br>
+         Deselect of readings by list.
+      </li>
+      <br>
+
+      <li><a name="dbplan-default-char"></a>
+         <dt><code>dbplan-default-char&lt;string&gt;</code></dt>
+         <br>
+         Define a string which will be displayed if no information is available. Defaultstring: "none"<br>
+         When defined the special string "delete" the raeding will not be filled and is not available since an information excists<br>
+         When defined the special string "nochar" the raeding will be filled with " "<br>
+      </li>
+      <br>
+
+      <li><a name="dbplan-tabel-headers"></a>
+         <dt><code>dbplan-tabel-headers&lt;header&gt;</code></dt>
+         <br>
+         Internal attribute to change the header information used by HTML::TableExtract.
+      </li>
+      <br>
+
+      <li><a name="dbplan-station-file"></a>
+         <dt><code>dbplan-station-file&lt;filename&gt;</code></dt>
+         <br>
+         Directory and name of the station table to be used: /opt/fhem/FHEM/deutschland_bhf.csv<br>
+         This table is to be used as a help for the search for railway stations and has no other function in the module.<br>
+      </li>
+      <br>
+
+      <li><a name="dbplan-base-type"></a>
+         <dt><code>dbplan-base-type&lt;plan | table&gt;</code></dt>
+         <br>
+         Select whether a station table (table) or a timetable (plan) display is to be generated.
+      </li>
+      <br>
+
+      <li><b>HTTPMOD attributes, have a look at the documentation</b></li>
+
+      <li><a name="dbplan-remote-timeout"></a>
+         <dt><code>dbplan-remote-timeout&lt;timeout&gt;</code></dt>
+         <br>
+      </li>
+      <br>
+
+      <li><a name="dbplan-remote-noshutdown"></a>
+         <dt><code>dbplan-remote-noshutdown&lt;0 | 1&gt;</code></dt>
+         <br>
+      </li>
+      <br>
+
+      <li><a name="dbplan-remote-loglevel"></a>
+         <dt><code>dbplan-remote-loglevel&lt;1..5&gt;</code></dt>
+         <br>
+      </li>
+      <br>
+
+      <li><a name="dbplan-remote-buf"></a>
+         <dt><code>dbplan-remote-buf&lt;0 | 1&gt;</code></dt>
+         <br>
+      </li>
+      <br>
+
+   </ul>
+   <br>
+   
+   <a name="DBPlanReadings"></a>
+   <b>Readings</b><br><br>
+   <ul>
+      <li><a href="#internalReadings">internalReadings</a></li>
+      <br>
+      <li><b>plan_departure_(1..3)</b>
+         time of departure<br>
+      </li>
+
+      <li><b>plan_arrival_(1..3)</b>
+         time of arrival<br>
+      </li>
+
+      <li><b>plan_connection_(1..3)</b>
+      type of connection<br>
+      </li>
+
+      <li><b>plan_departure_delay_(1..3)</b>
+      delay time for departure<br>
+      </li>
+
+      <li><b>plan_arrival_delay_(1..3)</b>
+      delay time for arrival<br>
+      </li>
+
+      <li><b>plan_travel_duration_(1..3)</b>
+      travel duration time<br>
+      </li>
+
+      <li><b>plan_travel_change_(1..3)</b>
+      travel platform changings<br>
+      </li>
+
+      <br>
+      <li><b>travel_departure_platform(1..3)</b>
+      informations about the platform, if available<br>
+      </li>
+
+      <li><b>travel_departure_station(1..3)</b>
+      informations about the station, if available<br>
+      </li>
+
+      <li><b>travel_destination_platform(1..3)</b>
+      informations about the the platform, if available<br>
+      </li>
+
+      <li><b>travel_destination_station(1..3)</b>
+      informations about the station, if available<br>
+      </li>
+
+      <li><b>travel_price_(1..3)</b>
+         travel price in EUR<br>
+      </li>
+
+      <br>
+      <li><b>travel_error_(1..3)</b>
+         error information when calling the note url<br>
+      </li>
+
+      <li><b>travel_note_(1..3)</b>
+         travel note for travel plan<br>
+      </li>
+
+      <li><b>travel_note_link_(1..3)</b>
+         travel note link for further informations<br>
+      </li>
+
+      <li><b>travel_note_text_(1..3)</b>
+         travel note text<br>
+      </li>
+   </ul>
 </ul>
+</div>
 
 =end html
 
@@ -1976,7 +2179,7 @@ sub RegExTest()
 
 <a name="DBPlan"></a>
 <h3>DBPlan</h3>
-
+<div>
 <ul>
 	Das Modul holt von der Infoseite der DB <https://reiseauskunft.bahn.de/bin/query.exe/dox?S=departure&Z=destination&start=1&rt=1>
        aktuelle Informationen zu einer angegeben Verbindung und legt sie in Fhem readings ab.
@@ -2160,8 +2363,9 @@ sub RegExTest()
 		<li><b>travel_price_(1..3) </b></li>
 			Fahrpreis<br>
 	</ul>
+       <br>
 </ul>
-
+</div>
 =end html_DE
 
 =cut
