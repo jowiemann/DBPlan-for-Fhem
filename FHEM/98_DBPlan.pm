@@ -2498,7 +2498,7 @@ sub RegExTest()
          Abfahrtszeit<br>
       </li>
 
-      <li><b>plan_arrival_(1..3) </b></li>
+      <li><b>plan_arrival_(1..3) </b>
          Ankunftszeit<br>
       </li>
 
