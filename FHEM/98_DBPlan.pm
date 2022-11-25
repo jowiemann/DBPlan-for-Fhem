@@ -1,4 +1,4 @@
-# $Id: 98_DBPlan.pm 80662 2018-02-23 18:53:00Z jowiemann $
+# $Id: 98_DBPlan.pm 89880 2022-11-21 20:18:00Z jowiemann $
 ##############################################################################
 #
 #     98_DBPlan.pm (Testversion)
@@ -9,7 +9,7 @@
 #     Z=destination will be replace with "S=".AttrVal($name, "dbplan_destination", undef)
 #     See also the domumentation for external calls
 #     Internet-Reiseauskunft der Deutschen Bahn AG
-#     Externe Aufrufparameter und R�ckgabeparameter an externe Systeme
+#     Externe Aufrufparameter und Rückgabeparameter an externe Systeme
 ##############################################################################
 
 use strict;                          
@@ -522,15 +522,15 @@ sub DBPlan_getMinutesDiff
 # generating bit pattern for DB products
 #
 # Bit Nummer Produktklasse
-#         0  ICE-Z�ge
-#         1  Intercity- und Eurocityz�ge
-#         2  Interregio- und Schnellz�ge
-#         3  Nahverkehr, sonstige Z�ge
+#         0  ICE-Züge
+#         1  Intercity- und Eurocityzüge
+#         2  Interregio- und Schnellzüge
+#         3  Nahverkehr, sonstige Züge
 #         4  S-Bahnen
 #         5  Busse
 #         6  Schiffe
 #         7  U-Bahnen
-#         8  Stra�enbahnen
+#         8  Straßenbahnen
 #         9  Anruf Sammeltaxi
 #
 sub DBPlan_products($)
@@ -803,7 +803,7 @@ sub DBPlan_Parse_Stationtable($)
     my $pattern = '';
 
     if ($data =~ m/\<div.class="haupt errormsg"\>(.*?)\<\/div\>/s) {
-        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃ¼fen.";
+        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃÂ¼fen.";
         readingsBeginUpdate($hash);
         readingsBulkUpdate( $hash, "table_error", "error in DB request: " . DBPlan_decode(DBPlan_html2uml($1)) );
         readingsEndUpdate( $hash, 1 );
@@ -851,7 +851,7 @@ sub DBPlan_Parse_Stationtable($)
         $table_row .= $1;
       }
 
-      # n�chster Bahnhof
+      # nächster Bahnhof
       $pattern = '\<\/span\>\<\/a\>&gt;&gt;(.*?)\<br.\/\>\<span.class';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . $1;
@@ -869,7 +869,7 @@ sub DBPlan_Parse_Stationtable($)
         $table_row .= "|" . $1;
       }
 
-      # Versp�tung
+      # Verspätung
       $pattern = '\<span.class="okmsg"\>(.*?)\<\/span\>';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . $1;
@@ -877,7 +877,7 @@ sub DBPlan_Parse_Stationtable($)
         $table_row .= "|-";
       }
 
-      # Versp�tung rot
+      # Verspätung rot
       $pattern = '\<span.class="red"\>(.*?)\<\/span\>,&nbsp;&nbsp;';
       if ($line =~ m/$pattern/s) {
         $table_row .= "|" . $1;
@@ -1347,7 +1347,7 @@ sub DBPlan_Parse_Timetable($)
     my $pattern = '\<div class="haupt bline leftnarrow"\>(.*?)\<div class="bline bggrey stdpadding"\>';
 
     if ($data =~ m/MOBI_ASK_DEU_de_error/s) {
-        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃ¼fen.";
+        Log3 $name, 3, "DBPlan ($name) - error in DB request. Bitte Log prÃÂ¼fen.";
         readingsBeginUpdate($hash);
         readingsBulkUpdate( $hash, "plan_error", "error in DB request" );
         readingsEndUpdate( $hash, 1 );
@@ -1449,9 +1449,9 @@ sub DBPlan_Parse_Timetable($)
           $retRow = join(';', @myValues);
           $retRow =~ s/\n|\r/;/g; #s,[\r\n]*,,g;
           if($defChar ne "delete") {
-            $retRow =~ s/Â /$defChar/g;
+            $retRow =~ s/ÃÂ /$defChar/g;
           } else {
-            $retRow =~ s/Â /$filler/g;
+            $retRow =~ s/ÃÂ /$filler/g;
           }
         }
 
@@ -1629,13 +1629,13 @@ sub DBPlan_Parse_Timetable($)
 
 #####################################
 # replaces all HTML entities to their utf-8 counter parts.
-# c3 bc = �
-# c3 9f = �
-# c3 b6 = �
-# c3 a4 = �
-# c3 84 = �
-# c3 96 = �
-# c3 9c = �
+# c3 bc = ü
+# c3 9f = ß
+# c3 b6 = ö
+# c3 a4 = ä
+# c3 84 = Ä
+# c3 96 = Ö
+# c3 9c = Ü
 # c2 ab = "
 # c2 bb = "
 # e2 80 = ""
@@ -1649,13 +1649,13 @@ sub DBPlan_html2txt($)
 
     $string =~ s/&nbsp;/ /g;
     $string =~ s/&amp;/&/g;
-    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/Ã¤/g;
-    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/Ã„/g;
-    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/Ã¶/g;
-    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/Ã–/g;
-    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/Ã¼/g;
-    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/Ãœ/g;
-    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/ÃŸ/g;
+    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/ÃÂ¤/g;
+    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/Ãâ/g;
+    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/ÃÂ¶/g;
+    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/Ãâ/g;
+    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/ÃÂ¼/g;
+    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/ÃÅ/g;
+    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/ÃÅ¸/g;
     $string =~ s/<.+?>//g;
     $string =~ s/(^\s+|\s+$)//g;
 
@@ -1669,15 +1669,15 @@ sub DBPlan_html2uml($)
 
     $string =~ s/&nbsp;/ /g;
     $string =~ s/&amp;/&/g;
-    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/�/g;
-    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/�/g;
-    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/�/g;
-    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/�/g;
-    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/�/g;
-    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/�/g;
+    $string =~ s/(\xe4|\xc3\xa4|&auml;|\\u00e4|\\u00E4|&#228;)/ä/g;
+    $string =~ s/(\xc4|\xc3\x84|&Auml;|\\u00c4|\\u00C4|&#196;)/Ä/g;
+    $string =~ s/(\xf6|\xc3\xb6|&ouml;|\\u00f6|\\u00F6|&#246;)/ö/g;
+    $string =~ s/(\xd6|\xc3\x96|&Ouml;|\\u00d6|\\u00D6|&#214;)/Ö/g;
+    $string =~ s/(\xfc|\xc3\xbc|&uuml;|\\u00fc|\\u00FC|&#252;)/ü/g;
+    $string =~ s/(\xdc|\xc3\x9c|&Uuml;|\\u00dc|\\u00DC|&#220;)/Ü/g;
     $string =~ s/(\x28|\x28|&lpar;|\\u0028|\\u0028|&#40;|&#x0028;)/\(/g;
     $string =~ s/(\x29|\x29|&rpar;|\\u0029|\\u0029|&#41;|&#x0029;)/\)/g;
-    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/�/g;
+    $string =~ s/(\xdf|\xc3\x9f|&szlig;|&#223;)/ß/g;
     $string =~ s/<.+?>//g;
     $string =~ s/(^\s+|\s+$)//g;
 
@@ -1688,15 +1688,15 @@ sub DBPlan_html2uml($)
 # UTF8
 sub DBPlan_decode($) {
   my($text) = @_;  
-  $text =~ s/�/ä/g;
-  $text =~ s/�/Ä/g;
-  $text =~ s/�/ö/g;
-  $text =~ s/�/Ö/g;
-  $text =~ s/�/ü/g;
-  $text =~ s/�/Ü/g;
-  $text =~ s/�/ß/g;
-  $text =~ s/�/´/g;
-  $text =~ s/"//g;  
+  $text =~ s/ä/Ã¤/g;
+  $text =~ s/Ä/Ã/g;
+  $text =~ s/ö/Ã¶/g;
+  $text =~ s/Ö/Ã/g;
+  $text =~ s/ü/Ã¼/g;
+  $text =~ s/Ü/Ã/g;
+  $text =~ s/ß/Ã/g;
+  $text =~ s/´/Â´/g;
+  $text =~ s/"/Â/g;  
   return $text;
 }
 
@@ -1851,8 +1851,8 @@ sub RegExTest()
       Example for a timetable query:<br><br>
       <ul>
          <code>
-           attr DB_Test dbplan_station  Köln-Weiden West
-           attr DB_Test dbplan_destination Köln HBF
+           attr DB_Test dbplan_station  KÃ¶ln-Weiden West
+           attr DB_Test dbplan_destination KÃ¶ln HBF
            attr DB_Test room OPNV
          </code>
       </ul>
@@ -2191,7 +2191,7 @@ sub RegExTest()
       <br>
       <li>
          Dieses Modul verwendet die nicht blockierende HTTP-Funktion HttpUtils_NonblockingGet von FHEM's HttpUtils in der aktuellen Version.<br>
-         Falls das Modul noch nicht in Ihrer Fhem-Umgebung vorhanden ist, aktualisieren Sie bitte FHEM über den Update Befehl.<br>
+         Falls das Modul noch nicht in Ihrer Fhem-Umgebung vorhanden ist, aktualisieren Sie bitte FHEM Ã¼ber den Update Befehl.<br>
       </li>
     </ul>
     <br>
@@ -2199,7 +2199,7 @@ sub RegExTest()
     State zeigt den Status des Device (DevState): 
     <ul>
        <li><b>initialized</b>
-          Das Device ist definiert, aber es wurde keine erfolgreichen Anfragen und Analysen durchgeführt<br>
+          Das Device ist definiert, aber es wurde keine erfolgreichen Anfragen und Analysen durchgefÃ¼hrt<br>
           Dieser Zustand wird auch beim Wechsel von <inactive> auf <active> und <disabled> auf <enabled> gesetzt<br>
        </li>
 
@@ -2208,7 +2208,7 @@ sub RegExTest()
        </li>
 
        <li><b>stopped</b>
-          Der Device Time wurde angehalten. Ein reread ist jedoch möglich<br>
+          Der Device Time wurde angehalten. Ein reread ist jedoch mÃ¶glich<br>
        </li>
 
        <li><b>disabled</b>
@@ -2224,8 +2224,8 @@ sub RegExTest()
    <br>
       <code>define &lt;name&gt; DBPlan &lt;Refresh interval in seconds [time offset in minutes]&gt;</code>
       <br><br>
-      Das Modul holt nach angegebenen "Intervall"-Sekunden über die DB URL die Fahrpläne. Ist time_offset definiert werden
-      die Fahrpläne für die aktuelle Zeit plus Offset in Minuten gelesen.<br>
+      Das Modul holt nach angegebenen "Intervall"-Sekunden Ã¼ber die DB URL die FahrplÃ¤ne. Ist time_offset definiert werden
+      die FahrplÃ¤ne fÃ¼r die aktuelle Zeit plus Offset in Minuten gelesen.<br>
       <br>
       Example:<br>
       <br>
@@ -2237,11 +2237,11 @@ sub RegExTest()
    <a name="DBPlanconfiguration"></a>
    <b>Konfiguration von DBPlan</b><br><br>
    <ul>
-      Beispiel für eine Fahrplanabfrage:<br><br>
+      Beispiel fÃ¼r eine Fahrplanabfrage:<br><br>
       <ul>
          <code>
-            attr DB_Test dbplan_station  Köln-Weiden West
-            attr DB_Test dbplan_destination Köln HBF
+            attr DB_Test dbplan_station  KÃ¶ln-Weiden West
+            attr DB_Test dbplan_destination KÃ¶ln HBF
             attr DB_Test room OPNV
          </code>
       </ul>
@@ -2254,7 +2254,7 @@ sub RegExTest()
       <li><a name="inactive"></a>
          <dt><code> &lt;name&gt; inactive</code></dt>
          <br>
-         Tempor�r inaktiv setzen<br>
+         Temporär inaktiv setzen<br>
       </li><br>
 
       <li><a name="active"></a>
@@ -2266,7 +2266,7 @@ sub RegExTest()
       <li><a name="interval"></a>
          <dt><code> &lt;name&gt; interval &lt;seconds&gt;</code></dt>
          <br>
-         Setzen einer anderen Intervallzeit für das Holen und Parsen der DB Informationen<br>
+         Setzen einer anderen Intervallzeit fÃ¼r das Holen und Parsen der DB Informationen<br>
       </li><br>
 
       <li><a name="timeOffset"></a>
@@ -2303,7 +2303,7 @@ sub RegExTest()
       <li><a name="searchStation"></a>
          <dt><code>get &lt;name&gt; searchStation &lt;name&gt;</code></dt>
          <br>
-         suche in der Bahnhofstabelle. Wird kein Suchbegriff eingegen, werden alle Bahnhöfe angezeigt.<br>
+         suche in der Bahnhofstabelle. Wird kein Suchbegriff eingegen, werden alle BahnhÃ¶fe angezeigt.<br>
       </li><br>
    </ul>
    <br>
@@ -2345,7 +2345,7 @@ sub RegExTest()
       <li><a name="dbplan_journey_prod"></a>
          <dt><code>dbplan_journey_prod &lt;product&gt;</code></dt>
          <br>
-         Liste der Verkehrsmittel, wie z.B.: ICE, Bus, Straßenbahn<br>
+         Liste der Verkehrsmittel, wie z.B.: ICE, Bus, StraÃenbahn<br>
       </li>
       <br>
 
@@ -2366,14 +2366,14 @@ sub RegExTest()
       <li><a name="dbplan_board_type"></a>
          <dt><code>dbplan_board_type &lt;depart | arrive&gt;</code></dt>
          <br>
-         Fahrplansuche bzw. Bahnhofsanzeige für Abfahrts- oder Ankunftszeit (depart / arrive).<br>
+         Fahrplansuche bzw. Bahnhofsanzeige fÃ¼r Abfahrts- oder Ankunftszeit (depart / arrive).<br>
       </li>
       <br>
 
       <li><a name="dbplan_delayed_Journey"></a>
          <dt><code>dbplan_delayed_Journey &lt;on | off&gt;</code></dt>
          <br>
-         Bei off werden nur pünktliche Verbindungen angezeigt.<br>
+         Bei off werden nur pÃ¼nktliche Verbindungen angezeigt.<br>
       </li>
       <br>
 
@@ -2387,7 +2387,7 @@ sub RegExTest()
       <li><a name="dbplan_reg_train"></a>
          <dt><code>dbplan_reg_train &lt;designation;</code></dt>
          <br>
-         die Zugbezeichnung, z.B. S für alles was S- und Straßenbahnen angeht, ICE alle ICE oder ICE mit Zugnummer. Usw.<br>
+         die Zugbezeichnung, z.B. S fÃ¼r alles was S- und StraÃenbahnen angeht, ICE alle ICE oder ICE mit Zugnummer. Usw.<br>
       </li>
       <br>
 
@@ -2431,9 +2431,9 @@ sub RegExTest()
       <li><a name="dbplan-default-char"></a>
          <dt><code>dbplan-default-char&lt;string&gt;</code></dt>
          <br>
-         Hinweis, der angezeigt wird, wenn keine Information für ein reading zur Verfügung steht.<br>
+         Hinweis, der angezeigt wird, wenn keine Information fÃ¼r ein reading zur VerfÃ¼gung steht.<br>
          - "none" ist der Standardhinweis.<br> 
-         Sofern folgende spezielle Einträge gemacht werden:
+         Sofern folgende spezielle EintrÃ¤ge gemacht werden:
          - "delete" nicht genutzte readings werden auch nicht angezeigt.<br>
          - "nochar" das Reading wird mit leerem Inhalt angezeigt.<br>
       </li>
@@ -2442,15 +2442,15 @@ sub RegExTest()
       <li><a name="dbplan-tabel-headers"></a>
          <dt><code>dbplan-tabel-headers&lt;header&gt;</code></dt>
          <br>
-         Internes Attribut um die Spaltenbezeichnungen für HTML::TableExtract<br>
+         Internes Attribut um die Spaltenbezeichnungen fÃ¼r HTML::TableExtract<br>
       </li>
       <br>
 
       <li><a name="dbplan-station-file"></a>
          <dt><code>dbplan-station-file&lt;filename&gt;</code></dt>
          <br>
-         Pfad zur Bahnhofstabelle der Deutschen Bahn (evtl. nicht vollständig). Für Für andere Verkehrsunternehmen liegen keine Tabellen vor.<br>
-         Diese Tabelle ist als Hilfe für die Suche nach Bahnhöfen anzusehen und hat keine weitere Funktion im Modul.<br>
+         Pfad zur Bahnhofstabelle der Deutschen Bahn (evtl. nicht vollstÃ¤ndig). FÃ¼r FÃ¼r andere Verkehrsunternehmen liegen keine Tabellen vor.<br>
+         Diese Tabelle ist als Hilfe fÃ¼r die Suche nach BahnhÃ¶fen anzusehen und hat keine weitere Funktion im Modul.<br>
       </li>
       <br>
 
@@ -2507,11 +2507,11 @@ sub RegExTest()
       </li>
 
       <li><b>plan_departure_delay_(1..3) </b>
-         Verspätung in der Abfahrtszeit<br>
+         VerspÃ¤tung in der Abfahrtszeit<br>
       </li>
 
       <li><b>plan_arrival_delay_(1..3) </b>
-         Verspätung in der Ankunftszeit<br>
+         VerspÃ¤tung in der Ankunftszeit<br>
       </li>
 
       <li><b>plan_travel_duration_(1..3) </b>
@@ -2524,7 +2524,7 @@ sub RegExTest()
 
       <br>
       <li><b>travel_note_(1..3) </b>
-         Hinweise für die Verbindung<br>
+         Hinweise fÃ¼r die Verbindung<br>
       </li>
 
       <li><b>travel_note_link_(1..3) </b>
@@ -2541,19 +2541,19 @@ sub RegExTest()
 
       <br>
       <li><b>travel_departure_platform(1..3) </b>
-         Informationen über das Abfahrtsgleis<br>
+         Informationen Ã¼ber das Abfahrtsgleis<br>
       </li>
 
       <li><b>travel_departure_station(1..3) </b>
-         Informationen über den Abfahrtsbahnhof<br>
+         Informationen Ã¼ber den Abfahrtsbahnhof<br>
       </li>
 
       <li><b>travel_destination_platform(1..3) </b>
-         Informationen über das Ankunftsgleis<br>
+         Informationen Ã¼ber das Ankunftsgleis<br>
       </li>
 
       <li><b>travel_destination_station(1..3) </b>
-         Informationen über den Zielbahnhof<br>
+         Informationen Ã¼ber den Zielbahnhof<br>
       </li>
 
       <li><b>travel_price_(1..3) </b>
